@@ -3,7 +3,7 @@ Main entry point for the EBIA FastAPI application.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import idea_routes
+from routes import idea_routes, auth_routes
 from config import settings
 
 app = FastAPI(
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_routes.router, prefix="/api/v1")
 app.include_router(idea_routes.router, prefix="/api/v1")
 
 @app.get("/")

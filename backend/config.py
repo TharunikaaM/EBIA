@@ -9,9 +9,18 @@ class Settings(BaseSettings):
     FAISS_INDEX_PATH: str = "data/faiss_index.bin"
     DATA_PATH: str = "data/sample_documents.json"
     
-    # Simulate an external or local LLM connection
-    OLLAMA_API_URL: str = "http://localhost:11434/api/generate"
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    SECRET_KEY: str = "your-secret-key-here"
+    
+    # Database
+    DATABASE_URL: str = "sqlite:///./data/ebia.db"
+    
+    # Ollama Local LLM
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL_NAME: str = "llama3"
+    OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
 
     class Config:
         env_file = ".env"

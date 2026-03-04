@@ -22,7 +22,8 @@ class LLMService:
             payload["format"] = "json"
             
         try:
-            response = requests.post(settings.OLLAMA_API_URL, json=payload, timeout=60)
+            url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+            response = requests.post(url, json=payload, timeout=60)
             response.raise_for_status()
             result = response.json()
             return result.get("response", "")

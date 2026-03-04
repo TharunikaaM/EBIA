@@ -15,11 +15,15 @@ class CompetitorOverview(BaseModel):
     weaknesses: List[str]
 
 class IdeaResponse(BaseModel):
+    idea_id: str
     original_idea: str
+    problem_statement: str
     refined_idea: str
     extracted_features: FeatureExtraction
     feasibility_score: int
     competitor_overview: List[CompetitorOverview]
+    similar_ideas: List[str]
+    key_features: List[str]
     user_pain_points: List[str]
     market_trends: List[str]
     risk_factors: List[str]

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
+from typing import Optional
 import logging
 
 from config import settings
@@ -16,27 +17,31 @@ logger = logging.getLogger(__name__)
 # Security settings
 SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = settings.ALGORITHM
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+# auto_error=False allows requests without tokens to proceed to the dependency
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
 
-def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+def get_current_user(db: Session = Depends(get_db), token: Optional[str] = Depends(oauth2_scheme)):
+    """
+    Lenient version for production-lite bypass. 
+    Returns a guest user if token is missing or invalid.
+    """
+    guest_user = {"email": "guest@local", "name": "Guest User"}
+    
+    if not token:
+        return guest_user
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise credentials_exception
+            return guest_user
     except JWTError:
-        raise credentials_exception
+        return guest_user
         
     user = db.query(User).filter(User.email == email).first()
     if user is None:
-        if email == "guest@local":
-             return {"email": email, "name": "Guest User"}
-        raise credentials_exception
+        return guest_user
+        
     return {"email": user.email, "name": user.full_name}
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -71,11 +76,10 @@ def login(request: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Keep legacy endpoints for backward compatibility if needed, but updated to the new flow
 @router.post("/guest", response_model=Token)
 def guest_auth():
     """Allows a user to continue as a guest with a guest JWT."""
-    logger.info("New guest authentication request")
+    logger.info("Guest authentication bypass active")
     access_token = create_access_token(data={"sub": "guest@local"})
     return {
         "access_token": access_token, 
@@ -85,13 +89,7 @@ def guest_auth():
 
 @router.post("/google", response_model=Token)
 def google_auth(payload: dict):
-    """
-    Handles Google OAuth token exchange.
-    For this prototype/academic project, we simulate the validation.
-    """
-    logger.info("Google authentication request received")
-    # In a real app, we would verify the token with Google's API here
-    # For now, we simulate a successful login for the mock_token
+    """Simulated Google OAuth."""
     guest_email = "google_user@local"
     access_token = create_access_token(data={"sub": guest_email})
     return {

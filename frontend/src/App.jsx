@@ -70,7 +70,7 @@ export default function App() {
         const res = await api.get(`/api/v1/idea/status/${taskId}`);
         if (res.data.status === 'COMPLETED') {
           clearInterval(iv);
-          setResultData(res.data.analysis_results);
+          setResultData(res.data.results);
           setEvaluationId(res.data.id);
           setStage('results');
         } else if (res.data.status === 'FAILED') {

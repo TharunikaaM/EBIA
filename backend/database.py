@@ -1,8 +1,13 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from config import settings
+
+"""
+Core Database Configuration and SQLAlchemy Models for EBIA.
+Enforces privacy flags and audit logging for Startup Idea Intelligence.
+"""
 
 engine_args = {}
 if settings.DATABASE_URL.startswith("sqlite"):
@@ -14,24 +19,65 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class Document(Base):
+    """
+    Represent market evidence documents (blogs, news, reviews).
+    is_public: If True, document is visible to the public RAG pipeline.
+    """
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     content = Column(Text)
     category = Column(String, index=True)
+    is_public = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class User(Base):
+    """
+    User account for appraisal access.
+    """
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class EvaluationHistory(Base):
+    """
+    Stores historical analysis results.
+    is_private: If True, evaluation is restricted to the owner.
+    """
     __tablename__ = "evaluation_history"
 
     id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(String, unique=True, index=True, nullable=False)
     user_email = Column(String, index=True)
     idea_text = Column(Text)
-    analysis_results = Column(JSON)
+    analysis_results = Column(JSON, nullable=True)
+    status = Column(String, default="PENDING")
+    error_message = Column(Text, nullable=True)
+    custom_title = Column(String, nullable=True)
+    is_private = Column(Boolean, default=True) # Defaults to Private in refactor
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class AuditLog(Base):
+    """
+    Tracks ethical triggers and system events for responsible AI auditing.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, index=True)
+    action = Column(String, index=True)
+    details = Column(JSON)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
 def get_db():
+    """
+    Dependency for obtaining a database session.
+    """
     db = SessionLocal()
     try:
         yield db

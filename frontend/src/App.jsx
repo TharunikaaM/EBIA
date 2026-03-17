@@ -1,615 +1,338 @@
-import React, { useState, useEffect } from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import {
-  BrainCircuit,
-  MessageSquare,
-  History,
-  Settings,
-  Sparkles,
-  AlertTriangle,
-  TrendingUp,
-  Coins,
-  ArrowLeft,
-  Download,
-  Zap,
-  PlusCircle,
-  MinusCircle,
-  LogIn,
-  User
+  BrainCircuit, Sparkles, Zap, History, Settings,
+  LogOut, ChevronDown, X, AlertTriangle, XCircle, CheckCircle2,
+  TrendingUp, Search, Globe, Lock, Trash2, FileText, Download,
+  User, ArrowRight, DollarSign
 } from 'lucide-react';
 import './index.css';
 
-const API_URL_EVAL = `${import.meta.env.VITE_API_URL}/api/v1/idea/evaluate`;
-const API_URL_GEN = `${import.meta.env.VITE_API_URL}/api/v1/idea/generate`;
-const API_URL_AUTH_GOOGLE = `${import.meta.env.VITE_API_URL}/api/v1/auth/google`;
-const API_URL_AUTH_GUEST = `${import.meta.env.VITE_API_URL}/api/v1/auth/guest`;
+import ScoreGauge from './components/ScoreGauge';
+import InsightCard from './components/InsightCard';
+import CompetitorTable from './components/CompetitorTable';
+import PivotPanel from './components/PivotPanel';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 
-function App() {
+// Refactored Components
+import Skeleton from './components/Skeleton';
+import UserMenu from './components/UserMenu';
+import HistoryDrawer from './components/HistoryDrawer';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export default function App() {
+  const [user] = useState({ name: 'Guest User', email: 'guest@local' });
   const [apiConnected, setApiConnected] = useState(false);
-  const [user, setUser] = useState(null); // Auth state
-  const [mode, setMode] = useState('evaluate'); // 'evaluate', 'generate', or 'history'
-  const [stage, setStage] = useState('input'); // 'input', 'loading', 'results'
+  const [tab, setTab] = useState('evaluate'); // 'evaluate' | 'generate'
+  const [stage, setStage] = useState('input'); // 'input' | 'loading' | 'results'
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState([]);
 
-  // Inputs
+  // Form inputs
   const [ideaInput, setIdeaInput] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [genBiz, setGenBiz] = useState('');
   const [genLoc, setGenLoc] = useState('');
   const [genBudget, setGenBudget] = useState('');
 
   // Results
   const [resultData, setResultData] = useState(null);
-  const [activeTab, setActiveTab] = useState('trends'); // 'trends', 'painpoints', 'risks'
-  const [loadingText, setLoadingText] = useState("Our AI is cross-referencing your idea against vector databases and extracting core features.");
-  const [scoreAnimation, setScoreAnimation] = useState(0);
+  const [evaluationId, setEvaluationId] = useState(null);
+  const [pivotData, setPivotData] = useState(null);
+  const [isPivoting, setIsPivoting] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('Scanning market signals…');
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const res = await fetch(API_URL_AUTH_GOOGLE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: "mock_token" }) // Using mock token for dev as requested
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user_info);
-          if (data.access_token) {
-            localStorage.setItem('ebia_token', data.access_token);
-          }
-        }
-      } catch (err) {
-        console.error("Login failed", err);
-      }
-    },
-    onError: errorResponse => console.error(errorResponse),
+  // Axios
+  const api = axios.create({ baseURL: API_BASE_URL });
+  api.interceptors.request.use(cfg => {
+    const token = localStorage.getItem('ebia_token');
+    if (token) cfg.headers.Authorization = `Bearer ${token}`;
+    return cfg;
   });
 
-  const guestLogin = async () => {
-    try {
-      const res = await fetch(API_URL_AUTH_GUEST, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user_info);
-        if (data.access_token) {
-          localStorage.setItem('ebia_token', data.access_token);
-        }
-      }
-    } catch (err) {
-      console.error("Guest login failed", err);
-      // Fallback for dev if backend isn't up
-      setUser({ name: "Guest", email: "guest@local" });
-    }
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setStage('input');
-    setResultData(null);
-    localStorage.removeItem('ebia_token');
-  }
-
-  const fetchHistory = async () => {
-    try {
-      const token = localStorage.getItem('ebia_token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/history`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setHistoryList(data);
-        setMode('history');
-        setStage('input');
-      } else if (res.status === 401) {
-        handleLogout();
-      }
-    } catch (err) {
-      console.error("Failed to fetch history", err);
-    }
-  };
-
   useEffect(() => {
-    checkApiStatus();
+    api.get('/').then(() => setApiConnected(true)).catch(() => setApiConnected(false));
+    const existing = localStorage.getItem('ebia_token');
+    if (!existing) {
+      axios.post(`${API_BASE_URL}/api/v1/auth/guest`)
+        .then(r => { if (r.data?.access_token) localStorage.setItem('ebia_token', r.data.access_token); })
+        .catch(() => {});
+    }
   }, []);
 
-  useEffect(() => {
-    if (stage === 'results' && resultData) {
-      // Simple count up animation
-      let current = 0;
-      const target = resultData.feasibility_score;
-      const interval = setInterval(() => {
-        current += 2;
-        if (current >= target) {
-          current = target;
-          clearInterval(interval);
+  const pollStatus = useCallback(async (taskId) => {
+    const msgs = ['Scanning market signals…', 'Finding your competitors…', 'Scoring your idea…', 'Building your report…'];
+    let i = 0;
+    const iv = setInterval(async () => {
+      try {
+        const res = await api.get(`/api/v1/idea/status/${taskId}`);
+        if (res.data.status === 'COMPLETED') {
+          clearInterval(iv);
+          setResultData(res.data.analysis_results);
+          setEvaluationId(res.data.id);
+          setStage('results');
+        } else if (res.data.status === 'FAILED') {
+          clearInterval(iv); toast.error('Something went wrong. Please try again.'); setStage('input');
+        } else {
+          setLoadingMsg(msgs[i++ % msgs.length]);
         }
-        setScoreAnimation(current);
-      }, 20);
-      return () => clearInterval(interval);
-    }
-  }, [stage, resultData]);
-
-  const checkApiStatus = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/`);
-      setApiConnected(res.ok);
-    } catch (e) {
-      setApiConnected(false);
-    }
-  };
-
-  const startImprovementLoop = (action) => {
-    if (!resultData) return;
-    let improvementPrompt = "";
-    if (action === 'differentiate') improvementPrompt = `Improve Differentiation for: ${resultData.refined_idea}. Make it stand out from ${resultData.competitor_overview.map(c => c.competitor_name).join(', ')}`;
-    if (action === 'derisk') improvementPrompt = `Reduce Risk for: ${resultData.refined_idea}. Address: ${resultData.risk_factors.join(', ')}`;
-    if (action === 'practical') improvementPrompt = `Make More Practical: ${resultData.refined_idea}`;
-    if (action === 'simplify') improvementPrompt = `Simplify Model for: ${resultData.refined_idea}`;
-
-    setIdeaInput(improvementPrompt);
-    setMode('evaluate');
-    setStage('input');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  if (!user) {
-    return (
-      <div className="login-container">
-        <div className="login-card glass-panel">
-          <div className="logo-container large">
-            <BrainCircuit className="logo-icon animate-pulse" size={48} />
-            <h1>EBIA</h1>
-          </div>
-          <h2>Evidence-Based Improvement Advisor</h2>
-          <p className="login-subtitle">AI-powered startup idea validation and structured improvement</p>
-
-          <div className="login-actions">
-            <button className="primary-btn full-width google-btn" onClick={() => googleLogin()}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '10px' }}>
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Sign in with Google
-            </button>
-            <div className="divider"><span>or</span></div>
-            <button className="secondary-btn full-width" onClick={guestLogin}>
-              <User size={20} style={{ marginRight: '10px' }} /> Continue as Guest
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+      } catch { clearInterval(iv); setStage('input'); toast.error('Lost connection to server.'); }
+    }, 3000);
+  }, []);
 
   const handleEvaluate = async () => {
-    if (ideaInput.trim().length < 10) {
-      alert("Please enter a more detailed idea (at least 10 characters).");
-      return;
-    }
-
-    setStage('loading');
-    setLoadingText("Our AI is cross-referencing your idea against vector databases and extracting core features.");
-
+    if (!ideaInput || ideaInput.length < 10) return toast.error('Tell us a bit more about your idea!');
+    setStage('loading'); setPivotData(null);
     try {
-      const token = localStorage.getItem('ebia_token');
-      const response = await fetch(API_URL_EVAL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ idea: ideaInput })
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          handleLogout();
-          throw new Error("Session expired. Please login again.");
-        }
-        const err = await response.json();
-        throw new Error(err.detail || 'Failed to evaluate idea');
-      }
-
-      const data = await response.json();
-      setResultData(data);
-      setStage('results');
-    } catch (error) {
-      console.error("Evaluation error:", error);
-      alert(`Error: ${error.message}\nMake sure the backend server (FastAPI) is running on port 8000.`);
-      setStage('input');
-    }
+      const res = await api.post('/api/v1/idea/evaluate', { idea: ideaInput, is_private: isPrivate });
+      pollStatus(res.data.task_id);
+    } catch (err) { setStage('input'); toast.error(err.response?.data?.detail || 'Could not connect to the server.'); }
   };
 
   const handleGenerate = async () => {
-    if (!genBiz || !genLoc || !genBudget) {
-      alert("Please fill in all the parameters for generation.");
-      return;
-    }
-
-    setStage('loading');
-    setLoadingText("Synthesizing new idea parameters and cross-referencing trends...");
-
+    if (!genBiz) return toast.error('Tell us what kind of business you want to explore!');
+    setStage('loading'); setPivotData(null);
     try {
-      const token = localStorage.getItem('ebia_token');
-      const response = await fetch(API_URL_GEN, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          business_type: genBiz,
-          location: genLoc,
-          budget: genBudget
-        })
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          handleLogout();
-          throw new Error("Session expired. Please login again.");
-        }
-        const err = await response.json();
-        throw new Error(err.detail || 'Failed to generate idea');
-      }
-
-      const data = await response.json();
-
-      // Inject generated idea into evaluation object for shared rendering
-      const evaluation = data.evaluation;
-      evaluation._generated_idea_text = data.generated_idea;
-
-      setResultData(evaluation);
-      setStage('results');
-    } catch (error) {
-      console.error("Generation error:", error);
-      alert(`Error: ${error.message}\nMake sure the backend server is running.`);
-      setStage('input');
-    }
+      const res = await api.post('/api/v1/idea/generate', { business_domain: genBiz, target_location: genLoc, budget_range: genBudget });
+      setResultData(res.data); setStage('results'); toast.success('Your idea is ready!');
+    } catch (err) { setStage('input'); toast.error(err.response?.data?.detail || 'Generation failed.'); }
   };
 
-  const handleReset = () => {
-    setIdeaInput('');
-    setStage('input');
-    setResultData(null);
-    setScoreAnimation(0);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handlePivot = async (evalId) => {
+    if (!evalId) return;
+    setIsPivoting(true); setPivotData(null);
+    try {
+      const res = await api.post('/api/v1/idea/pivot', null, { params: { evaluation_id: evalId } });
+      setPivotData(res.data); toast.success('Found 3 alternative paths!');
+    } catch { toast.error('Could not find alternatives right now.'); }
+    finally { setIsPivoting(false); }
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'var(--accent-success)';
-    if (score >= 60) return 'var(--brand-primary)';
-    if (score >= 40) return 'var(--accent-warning)';
-    return 'var(--accent-danger)';
+  const fetchHistory = async () => {
+    try {
+      const res = await api.get('/api/v1/history');
+      setHistoryList(res.data);
+    } catch { toast.error('Could not load your history.'); }
+    setHistoryOpen(true);
   };
 
-  const getScoreLabel = (score) => {
-    if (score >= 80) return 'Highly Feasible';
-    if (score >= 60) return 'Feasible';
-    if (score >= 40) return 'High Risk';
-    return 'Low Feasibility';
+  const deleteHistory = async (id) => {
+    try { await api.delete(`/api/v1/history/${id}`); setHistoryList(p => p.filter(h => h.id !== id)); toast.success('Removed.'); }
+    catch { toast.error('Could not delete this.'); }
   };
+
+  const exportHistory = async (id, fmt) => {
+    try {
+      const res = await api.get(`/api/v1/history/${id}/export?format=${fmt}`, { responseType: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(res.data);
+      a.download = `ebia_report_${id}.${fmt}`;
+      a.click();
+    } catch { toast.error('Export failed.'); }
+  };
+
+  const handleReset = () => { setStage('input'); setResultData(null); setPivotData(null); };
 
   return (
-    <div className="app-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="logo-container">
-          <BrainCircuit className="logo-icon" />
-          <h1>EBIA</h1>
-        </div>
-        <p className="subtitle">Evidence-Based Improvement Advisor</p>
+    <div className="min-h-screen relative text-slate-200">
+      <div className="mesh-bg" />
+      
+      <Toaster position="top-center" toastOptions={{
+        style: { background: 'rgba(15, 23, 42, 0.9)', color: '#fff', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '14px', backdropFilter: 'blur(8px)' }
+      }} />
 
-        <div className="nav-menu">
-          <button
-            className={`nav-item ${mode !== 'history' ? 'active' : ''}`}
-            onClick={() => { setMode('evaluate'); setStage('input'); }}
-          >
-            <MessageSquare size={18} /> New Evaluation
-          </button>
-          <button
-            className={`nav-item ${mode === 'history' ? 'active' : ''}`}
-            onClick={fetchHistory}
-          >
-            <History size={18} /> History
-          </button>
-          <button className="nav-item"><Settings size={18} /> Settings</button>
-          <button className="nav-item sign-out" onClick={handleLogout}><ArrowLeft size={18} /> Sign Out</button>
-        </div>
-
-        <div className="sidebar-footer">
-          <div className="status-indicator">
-            <span className={`status-dot ${apiConnected ? 'online' : 'offline'}`}></span>
-            {apiConnected ? 'API Connected' : 'API Disconnected'}
+      {/* --- Header --- */}
+      <header className="sticky top-0 z-40 border-b border-white/5 backdrop-blur-xl bg-black/20">
+        <div className="container-7xl h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <BrainCircuit size={24} className="text-blue-500" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-black brand-font tracking-tight text-white">EBIA</span>
+              <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em] leading-none">Intelligence</span>
+            </div>
+            <div className={`ml-4 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${apiConnected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+              <div className={`w-1 h-1 rounded-full ${apiConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+              {apiConnected ? 'LIVE' : 'OFFLINE'}
+            </div>
           </div>
+
+          <UserMenu user={user} onShowHistory={fetchHistory} onLogout={() => { localStorage.removeItem('ebia_token'); window.location.reload(); }} />
         </div>
-      </aside>
+      </header>
 
-      {/* Main Content */}
-      <main className="main-content">
-        <header className="topbar">
-          <h2>Idea Evaluation Engine</h2>
-          <div className="user-profile">
-            <div className="avatar">U</div>
-          </div>
-        </header>
-
-        <div className="workspace">
-          {stage === 'input' && (
-            <>
-              {/* Mode Toggle */}
-              <div className="mode-tabs">
-                <button
-                  className={`mode-btn ${mode === 'evaluate' ? 'active' : ''}`}
-                  onClick={() => setMode('evaluate')}
-                >
-                  Evaluate Idea
-                </button>
-                <button
-                  className={`mode-btn ${mode === 'generate' ? 'active' : ''}`}
-                  onClick={() => setMode('generate')}
-                >
-                  Generate Idea
-                </button>
+      {/* --- Main Content --- */}
+      <main className="container-7xl py-8 lg:py-12">
+        {stage === 'input' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Hero */}
+            <div className="text-center mb-12 lg:mb-16">
+              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-blue-400 text-[10px] font-black px-4 py-1.5 rounded-full mb-6 tracking-widest uppercase">
+                <Sparkles size={12} /> Version 2.0
               </div>
+              <h1 className="text-4xl lg:text-6xl font-black text-white brand-font tracking-tight leading-[1.1] mb-6">
+                Build your startup <br />
+                <span className="gradient-text">with certainty.</span>
+              </h1>
+              <p className="text-slate-400 text-base lg:text-lg max-w-xl mx-auto leading-relaxed">
+                Hyper-analyze your startup ideas using global market signals and competitive intelligence. 
+                Stop guessing, start building.
+              </p>
+            </div>
 
-              <section className="input-section" id="inputSection">
-                {mode === 'evaluate' ? (
-                  <div className="input-card glass-panel" id="evaluateModeCard">
-                    <h3>Describe your startup idea</h3>
-                    <p>Be as descriptive as possible. Include the problem you are solving, target audience, and proposed solution.</p>
+            {/* Tab Selector */}
+            <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit mx-auto mb-12">
+              <button
+                onClick={() => setTab('evaluate')}
+                className={`flex items-center gap-2 px-8 py-3 rounded-xl text-xs font-black transition-all duration-300 ${tab === 'evaluate' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+              >
+                <Search size={16} /> EVALUATE
+              </button>
+              <button
+                onClick={() => setTab('generate')}
+                className={`flex items-center gap-2 px-8 py-3 rounded-xl text-xs font-black transition-all duration-300 ${tab === 'generate' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+              >
+                <Zap size={16} /> GENERATE
+              </button>
+            </div>
 
-                    <div className="textarea-wrapper">
-                      <textarea
-                        value={ideaInput}
-                        onChange={(e) => setIdeaInput(e.target.value)}
-                        placeholder="e.g., An app that connects local farmers directly to high-end restaurants for daily fresh deliveries, reducing food waste and ensuring quality."
-                        rows={5}
-                      />
-                    </div>
+            {/* Input Forms */}
+            <div className="max-w-3xl mx-auto">
+              {tab === 'evaluate' ? (
+                <div className="glass rounded-[24px] p-6 lg:p-8 border-white/10 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-6 opacity-5 text-white">
+                    <BrainCircuit size={80} />
+                  </div>
+                  <h2 className="text-xl font-black text-white mb-1 brand-font">Manifest your vision</h2>
+                  <p className="text-slate-500 mb-6 font-medium text-sm">Describe your concept for deep analysis.</p>
 
-                    <div className="action-row">
-                      <span className="char-count" style={{ color: ideaInput.length > 10 ? 'var(--text-muted)' : 'inherit' }}>
-                        {ideaInput.length} characters
+                  <textarea
+                    value={ideaInput}
+                    onChange={e => setIdeaInput(e.target.value)}
+                    placeholder="e.g., A cloud-native platform for autonomous supply chain management..."
+                    rows={6}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder:text-slate-600 text-base leading-relaxed focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 resize-none transition-all mb-6"
+                  />
+
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <button
+                      onClick={() => setIsPrivate(v => !v)}
+                      className="flex items-center gap-3 py-1.5 px-3 rounded-lg hover:bg-white/5 transition-all group"
+                    >
+                      <div className={`w-8 h-5 rounded-full p-1 transition-colors duration-300 ${isPrivate ? 'bg-blue-600' : 'bg-white/10'}`}>
+                        <div className={`w-3 h-3 bg-white rounded-full transition-transform duration-300 ${isPrivate ? 'translate-x-3' : ''}`} />
+                      </div>
+                      <span className={`text-[9px] font-black tracking-widest uppercase ${isPrivate ? 'text-blue-400' : 'text-slate-500'}`}>
+                        {isPrivate ? 'Stealth' : 'Global Network'}
                       </span>
-                      <button onClick={handleEvaluate} className="primary-btn">
-                        <span>Evaluate Idea</span>
-                        <Sparkles size={20} />
-                      </button>
-                    </div>
-                  </div>
-                ) : mode === 'generate' ? (
-                  <div className="input-card glass-panel" id="generateModeCard">
-                    <h3>Generate a Startup Idea</h3>
-                    <p>Provide a few parameters, and our AI will generate and evaluate a tailored startup idea for you.</p>
+                    </button>
 
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Business Type</label>
-                        <input
-                          type="text"
-                          className="text-input"
-                          value={genBiz}
-                          onChange={(e) => setGenBiz(e.target.value)}
-                          placeholder="e.g., SaaS, Marketplace, EdTech"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Location / Target Market</label>
-                        <input
-                          type="text"
-                          className="text-input"
-                          value={genLoc}
-                          onChange={(e) => setGenLoc(e.target.value)}
-                          placeholder="e.g., Urban US, Global, Rural India"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Investment Budget</label>
-                        <input
-                          type="text"
-                          className="text-input"
-                          value={genBudget}
-                          onChange={(e) => setGenBudget(e.target.value)}
-                          placeholder="e.g., Bootstrapped, $10k-$50k, VC Funding"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="action-row" style={{ justifyContent: 'flex-end' }}>
-                      <button onClick={handleGenerate} className="primary-btn">
-                        <span>Generate & Evaluate</span>
-                        <Zap size={20} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="history-section">
-                    <h3>Evaluation History</h3>
-                    <p>Access your previous startup idea evaluations and insights.</p>
-
-                    {historyList.length === 0 ? (
-                      <div className="empty-state glass-panel">
-                        <History size={48} className="text-muted" />
-                        <p>No history found. Start your first evaluation to see it here!</p>
-                      </div>
-                    ) : (
-                      <div className="history-grid">
-                        {historyList.map((item) => (
-                          <div key={item.id} className="history-item glass-panel" onClick={() => {
-                            setResultData(item.analysis_results);
-                            setStage('results');
-                            setMode('evaluate');
-                          }}>
-                            <div className="history-header">
-                              <span className="date">{new Date(item.created_at).toLocaleDateString()}</span>
-                              <span className="score" style={{ color: getScoreColor(item.analysis_results.feasibility_score) }}>
-                                {item.analysis_results.feasibility_score}%
-                              </span>
-                            </div>
-                            <div className="history-body">
-                              <p className="idea-preview">{item.idea_text.substring(0, 100)}...</p>
-                              <div className="domain-tag">{item.analysis_results.extracted_features.domain}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            </>
-          )}
-
-          {stage === 'loading' && (
-            <section className="loading-section" id="loadingSection">
-              <div className="loader-container">
-                <div className="spinner"></div>
-                <h3>Analyzing Market Data...</h3>
-                <p>{loadingText}</p>
-              </div>
-            </section>
-          )}
-
-          {stage === 'results' && resultData && (
-            <section className="results-section" id="resultsSection">
-              <div className="dashboard-grid">
-
-                {/* Feasibility Score */}
-                <div className="grid-item score-card glass-panel">
-                  <h4>Feasibility Score</h4>
-                  <div className="score-display">
-                    <svg viewBox="0 0 36 36" className="circular-chart" style={{ stroke: getScoreColor(resultData.feasibility_score) }}>
-                      <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="circle" strokeDasharray={`${scoreAnimation}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <text x="18" y="20.5" className="percentage">{scoreAnimation}</text>
-                    </svg>
-                    <div className="score-label" style={{ color: getScoreColor(resultData.feasibility_score) }}>
-                      {getScoreLabel(resultData.feasibility_score)}
-                    </div>
+                    <button
+                      onClick={handleEvaluate}
+                      disabled={ideaInput.length < 10}
+                      className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black rounded-xl px-8 py-3.5 transition-all active:scale-95 shadow-xl shadow-blue-500/20 text-sm uppercase tracking-wider"
+                    >
+                      <Sparkles size={18} /> Initiate Analysis
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <div className="glass rounded-[24px] p-6 lg:p-8 border-white/10">
+                  <h2 className="text-xl font-black text-white mb-1 brand-font">Parameters</h2>
+                  <p className="text-slate-500 mb-8 font-medium text-sm">Set constraints for AI generation.</p>
 
-                {/* Core Features */}
-                <div className="grid-item features-card glass-panel col-span-2">
-                  <h4>Core Abstraction</h4>
-                  <p className="refined-idea">
-                    {resultData._generated_idea_text ? (
-                      <>
-                        <strong>Generated Idea:</strong> {resultData._generated_idea_text}<br /><br />
-                        <strong>Optimization:</strong> {resultData.refined_idea}
-                      </>
-                    ) : (
-                      resultData.refined_idea
-                    )}
-                  </p>
-
-                  <div className="tags-container">
-                    <div className="tag-group">
-                      <span className="tag-label">Domain</span>
-                      <span className="tag primary">{resultData.extracted_features.domain}</span>
-                    </div>
-                    <div className="tag-group">
-                      <span className="tag-label">Target Audience</span>
-                      <span className="tag secondary">{resultData.extracted_features.target_users}</span>
-                    </div>
-                    <div className="tag-group">
-                      <span className="tag-label">Core Problem</span>
-                      <span className="tag tertiary">{resultData.extracted_features.core_problem}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Warnings */}
-                {(resultData.status === "warning_flags_present" || (resultData.ethical_flags && resultData.ethical_flags.length > 0)) && (
-                  <div className="grid-item warnings-card col-span-3" id="warningsCard">
-                    <h4><AlertTriangle size={16} /> Ethical Flags Detected</h4>
-                    <ul>
-                      {resultData.ethical_flags.map((flag, i) => <li key={i}>{flag}</li>)}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Tabs for Market Data */}
-                <div className="grid-item market-card glass-panel col-span-2">
-                  <div className="tabs">
-                    <button className={`tab-btn ${activeTab === 'trends' ? 'active' : ''}`} onClick={() => setActiveTab('trends')}>Market Trends</button>
-                    <button className={`tab-btn ${activeTab === 'painpoints' ? 'active' : ''}`} onClick={() => setActiveTab('painpoints')}>User Pain Points</button>
-                    <button className={`tab-btn ${activeTab === 'risks' ? 'active' : ''}`} onClick={() => setActiveTab('risks')}>Risk Factors</button>
-                  </div>
-                  <div className="tab-content" id="tabContent">
-                    <ul className="list-display">
-                      {activeTab === 'trends' && resultData.market_trends.map((item, i) => <li key={i}>{item}</li>)}
-                      {activeTab === 'painpoints' && resultData.user_pain_points.map((item, i) => <li key={i}>{item}</li>)}
-                      {activeTab === 'risks' && resultData.risk_factors.map((item, i) => <li key={i}>{item}</li>)}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Competitors */}
-                <div className="grid-item competitors-card glass-panel">
-                  <h4>Top Competitors</h4>
-                  <div className="competitors-list">
-                    {resultData.competitor_overview.map((comp, i) => (
-                      <div className="competitor-item" key={i}>
-                        <div className="competitor-name">{comp.competitor_name}</div>
-                        <div className="competitor-stat strength"><PlusCircle size={14} style={{ stroke: 'var(--accent-success)', marginRight: '4px' }} /> Strengths: {comp.strengths.join(', ')}</div>
-                        <div className="competitor-stat weakness"><MinusCircle size={14} style={{ stroke: 'var(--accent-danger)', marginRight: '4px' }} /> Weaknesses: {comp.weaknesses.join(', ')}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {[
+                      { label: 'DOMAIN', value: genBiz, setter: setGenBiz, placeholder: 'Healthcare' },
+                      { label: 'MARKET', value: genLoc, setter: setGenLoc, placeholder: 'Global' },
+                      { label: 'BUDGET', value: genBudget, setter: setGenBudget, placeholder: '$10k+' },
+                    ].map(({ label, value, setter, placeholder }) => (
+                      <div key={label}>
+                        <label className="block text-[9px] font-black text-slate-500 tracking-[0.2em] mb-2">{label}</label>
+                        <input
+                          value={value}
+                          onChange={e => setter(e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-slate-700 text-sm focus:outline-none focus:border-blue-500/50 transition-all font-bold"
+                        />
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* Steps */}
-                <div className="grid-item strategy-card glass-panel col-span-2">
-                  <h4><TrendingUp size={16} /> Improvement Steps</h4>
-                  <ul className="steps-list">
-                    {resultData.improvement_steps.map((step, i) => (
-                      <li className="step-item" key={i}>
-                        <div className="step-number">{i + 1}</div>
-                        <div className="step-content">{step}</div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Monetization */}
-                <div className="grid-item monetization-card glass-panel">
-                  <h4><Coins size={16} /> Monetization Models</h4>
-                  <ul className="chips-list">
-                    {resultData.monetization_suggestions.map((model, i) => (
-                      <li className="chip" key={i}>{model}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Improvement Actions */}
-                <div className="grid-item actions-card glass-panel col-span-3">
-                  <h4><Sparkles size={16} /> Guided Improvement Options</h4>
-                  <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>Select an option to iterate and improve your idea based on the analysis above.</p>
-                  <div className="improvement-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <button onClick={() => startImprovementLoop('differentiate')} className="secondary-btn" style={{ flex: 1, justifyContent: 'center' }}>Differentiate vs Competitors</button>
-                    <button onClick={() => startImprovementLoop('derisk')} className="secondary-btn" style={{ flex: 1, justifyContent: 'center' }}>Address Key Risks</button>
-                    <button onClick={() => startImprovementLoop('simplify')} className="secondary-btn" style={{ flex: 1, justifyContent: 'center' }}>Simplify Core Model</button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={!genBiz}
+                      className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black rounded-xl px-10 py-3.5 transition-all active:scale-95 shadow-xl shadow-blue-500/20 text-sm uppercase tracking-wider"
+                    >
+                      <Zap size={18} /> Forge Concept
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
 
+        {/* --- Loading State --- */}
+        {stage === 'loading' && (
+          <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex flex-col items-center text-center pt-8 mb-12">
+              <div className="relative w-20 h-20 mb-6">
+                <div className="absolute inset-0 border-[2px] border-blue-500/20 rounded-full" />
+                <div className="absolute inset-0 border-[2px] border-t-blue-500 rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center text-blue-500">
+                  <BrainCircuit size={28} className="animate-pulse" />
+                </div>
               </div>
+              <h2 className="text-2xl font-black text-white mb-2 brand-font uppercase tracking-tight">Processing Signals</h2>
+              <p className="text-blue-400 font-bold tracking-widest uppercase text-[9px]">{loadingMsg}</p>
+            </div>
+            <Skeleton />
+          </div>
+        )}
 
-              <div className="actions-footer">
-                <button onClick={handleReset} className="secondary-btn"><ArrowLeft size={16} /> Start New Evaluation</button>
-                <button className="primary-btn outline"><Download size={16} /> Export Report</button>
+        {/* --- Results State --- */}
+        {stage === 'results' && resultData && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center justify-between mb-8 lg:mb-10">
+              <button 
+                onClick={handleReset} 
+                className="flex items-center gap-2 text-slate-500 hover:text-white text-[10px] font-black tracking-widest uppercase transition-all group"
+              >
+                <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
+                   ←
+                </div>
+                Return
+              </button>
+              <div className="flex items-center gap-2 text-[8px] font-black tracking-[0.2em] text-blue-400 uppercase bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20">
+                <Sparkles size={12} /> Synthetic Analysis
               </div>
-            </section>
-          )}
-        </div>
+            </div>
+            <AnalyticsDashboard
+              data={resultData}
+              evaluationId={evaluationId}
+              pivotData={pivotData}
+              isPivoting={isPivoting}
+              onPivotRequest={handlePivot}
+              onReset={handleReset}
+            />
+          </div>
+        )}
       </main>
+
+      {/* --- Overlay Components --- */}
+      <HistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        historyList={historyList}
+        onOpen={item => { setResultData(item.analysis_results); setStage('results'); }}
+        onDelete={deleteHistory}
+        onExport={exportHistory}
+      />
     </div>
   );
 }
-
-export default App;

@@ -4,6 +4,7 @@ from typing import Optional
 class IdeaRequest(BaseModel):
     idea: str = Field(..., description="The startup idea in natural language.")
     domain: Optional[str] = Field(None, description="Optional domain of the idea.")
+    is_private: bool = Field(False, description="Whether to keep the evaluation private.")
     
     class Config:
         json_schema_extra = {

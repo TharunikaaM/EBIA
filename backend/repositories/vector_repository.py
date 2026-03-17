@@ -31,12 +31,12 @@ class VectorRepository:
         # Load documents from PostgreSQL
         db = SessionLocal()
         try:
-            db_docs = db.query(Document).all()
+            db_docs = db.query(Document).filter(Document.is_public == True).all()
             self.documents = [
-                {"id": d.id, "title": d.title, "content": d.content, "category": d.category}
+                {"id": d.id, "title": d.title, "content": d.content, "category": d.category, "is_public": d.is_public}
                 for d in db_docs
             ]
-            logger.info(f"Loaded {len(self.documents)} documents from PostgreSQL.")
+            logger.info(f"Loaded {len(self.documents)} public documents from PostgreSQL.")
         except Exception as e:
             logger.error(f"Error loading documents from database: {e}")
             # Fallback to JSON if DB fails during transition

@@ -1,27 +1,73 @@
 """
-Service to calculate a feasibility score for the idea.
+Deterministic scoring engine for Startup Idea Intelligence.
+Calculates feasibility based on market evidence, innovation, and execution risk.
 """
-import random
+from typing import List, Dict, Any
 
-def calculate_feasibility(idea: str, similar_docs: list) -> int:
+def calculate_idea_feasibility_score(idea_text: str, similar_documents: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Calculates a mocked feasibility score between 0 and 100.
-    In a real scenario, this would involve complex multi-factor analysis
-    using similarity scores, market trends, etc.
-    """
-    base_score = 50
+    Executes a multi-factor logic-driven engine to calculate a feasibility score (0-100).
     
-    # If there are highly similar domains, it means market exists but competition is high
-    if similar_docs:
-        avg_distance = sum(doc.get("_distance", 1.0) for doc in similar_docs) / len(similar_docs)
-        # Assuming lower distance = higher similarity
-        if avg_distance < 0.5:
-            base_score += 20 # Proven market
-        else:
-            base_score += 10 # Novel but risky
+    Factors:
+    1. Market Validation (30%): Distance proximity of similar concepts.
+    2. Innovation/Novelty (30%): Uniqueness relative to retrieved evidence.
+    3. Execution Risk (40%): Sentiment and keyword analysis of historical pain points.
+    """
+    if not similar_documents:
+        return {
+            "score": 50,
+            "reasoning": "Neutral score assigned due to limited public evidence. Further empirical verification is recommended."
+        }
+
+    # 1. Market Validation (Proximity Analysis)
+    # distance 0.0 -> 100 validation, distance 1.0+ -> 0 validation
+    avg_distance = sum(doc.get("_distance", 1.0) for doc in similar_documents) / len(similar_documents)
+    market_val_score = max(0, min(100, (1.0 - avg_distance) * 100))
+    
+    # 2. Innovation / Novelty
+    # Higher distance = Higher Novelty.
+    novelty_score = max(0, min(100, avg_distance * 100))
+    
+    # 3. Execution Risk (Retrieval-Based Sentiment/Pain Point Analysis)
+    risk_keywords = ["failure", "closed", "regulation", "struggle", "unmet", "lack", "pain", "frustration", "bankrupt"]
+    risk_hits = 0
+    total_content = " ".join([doc.get("content", "").lower() for doc in similar_documents])
+    
+    for kw in risk_keywords:
+        if kw in total_content:
+            risk_hits += 1
             
-    # Add some randomness for simulation
-    score = base_score + random.randint(-15, 25)
+    # Calculate Risk Score (0 = High Risk, 100 = Low Risk)
+    execution_risk_score = max(10, 90 - (risk_hits * 10))
     
-    # Cap between 10 and 95 for realism
-    return max(10, min(95, score))
+    # Weighted Final Score Initialization
+    validation_weight = 0.3
+    innovation_weight = 0.3
+    risk_weight = 0.4
+    
+    final_score = (market_val_score * validation_weight) + \
+                  (novelty_score * innovation_weight) + \
+                  (execution_risk_score * risk_weight)
+    
+    # Generate Reasoning Narrative
+    reasoning_parts = []
+    
+    if market_val_score > 70:
+        reasoning_parts.append("High feasibility driven by strong market validation in retrieved evidence.")
+    elif market_val_score < 30:
+        reasoning_parts.append("Moderate feasibility due to limited historical precedents in public datasets.")
+        
+    if execution_risk_score < 50:
+        reasoning_parts.append(f"Retrieved indices flag potential execution risks or historical pain points ({risk_hits} indicators found).")
+    else:
+        reasoning_parts.append("Market evidence suggests a sustainable path with manageable entry barriers.")
+        
+    if novelty_score > 70:
+        reasoning_parts.append("The concept demonstrates high strategic novelty relative to existing solutions.")
+    else:
+        reasoning_parts.append("Similar solutions are active; focus on unique differentiation is critical.")
+
+    return {
+        "score": int(max(0, min(100, final_score))),
+        "reasoning": " ".join(reasoning_parts)
+    }

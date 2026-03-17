@@ -1,65 +1,133 @@
 """
-Service for topic modeling simulation.
+Service for advanced topic modeling and pattern mining.
 """
+from typing import List, Dict, Any
 from bertopic import BERTopic
+from bertopic.vectorizers import ClassTfidfTransformer
 import logging
+import json
+from services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
-# Note: For a real high-throughput application, BERTopic/LDA would be trained 
-# on a large corpus and the model kept in memory.
-# In this implementation, we will perform short-text topic modeling over a combination
-# of the input idea and related context, or fall back to LLM/keywords if data is too small.
+# Fallback categories if modeling fails
+DEFAULT_TOPICS = {
+    "pain_points": ["High operational costs", "Market reaching saturation"],
+    "trends": ["Shift towards automation", "Growing digital ecosystems"],
+    "features": ["AI-driven insights", "Seamless mobile integration"]
+}
 
-def extract_topics(text: str, context_docs: list = None) -> list:
+def synthesize_topic_cluster_summary(docs: List[str], cluster_keywords: List[str]) -> str:
     """
-    Extracts topics using BERTopic if sufficient context is available, 
-    otherwise falls back to a lightweight keyword/LLM extraction approach.
+    Synthesizes a human-readable market reality from a cluster of documents using LLM.
     """
-    topics = []
+    context_blob = "\n---\n".join(docs[:5])
+    analysis_prompt = f"""
+    Analyze these market documents and keywords: {", ".join(cluster_keywords)}
+    Documents: {context_blob}
     
-    # Simple keyword-based extraction as a baseline
-    text_lower = text.lower()
-    if "data" in text_lower or "ai" in text_lower or "machine learning" in text_lower:
-        topics.append("Artificial Intelligence")
-    if "health" in text_lower or "medical" in text_lower:
-        topics.append("Healthcare")
-    if "finance" in text_lower or "money" in text_lower or "invest" in text_lower:
-        topics.append("FinTech")
-    if "farm" in text_lower or "agriculture" in text_lower:
-         topics.append("AgriTech")
-    if "education" in text_lower or "learn" in text_lower or "student" in text_lower:
-        topics.append("EdTech")
+    Synthesize into ONE concise market reality sentence (max 15 words).
+    """
+    try:
+        summary_text = LLMService.generate(analysis_prompt)
+        return summary_text.strip()
+    except Exception as e:
+        logger.error(f"Cluster synthesis failure: {e}")
+        return cluster_keywords[0].capitalize() if cluster_keywords else "Unknown Trend"
+
+def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Orchestrates the extraction of market patterns (Pain Points, Trends, Features) 
+    using BERTopic enhanced by c-TF-IDF and LLM-driven synthesis.
+    """
+    extracted_insights = {
+        "user_pain_points": [],
+        "market_trends": [],
+        "key_features": []
+    }
+    
+    # Consolidate corpus for modeling
+    modeling_corpus = [seed_text]
+    if contextual_documents:
+        modeling_corpus.extend([
+            doc.get("content", "") 
+            for doc in contextual_documents 
+            if isinstance(doc, dict) and "content" in doc
+        ])
+    
+    # Heuristic: Direct LLM extraction for small datasets
+    if len(modeling_corpus) < 3:
+        logger.info("Insufficient corpus size for BERTopic. Delegating to direct LLM pattern mining.")
+        return execute_llm_pattern_mining_fallback(seed_text)
+
+    try:
+        # Enforce Class-based TF-IDF for high-impact keyword differentiation
+        tfidf_transformer = ClassTfidfTransformer(reduce_frequent_words=True)
+        bertopic_engine = BERTopic(
+            ctfidf_model=tfidf_transformer,
+            min_topic_size=2,
+            embedding_model="all-MiniLM-L6-v2"
+        )
         
-    doc_list = [text]
-    if context_docs:
-        doc_list.extend([doc.get("content", "") for doc in context_docs if isinstance(doc, dict) and "content" in doc])
+        topic_assignments, _ = bertopic_engine.fit_transform(modeling_corpus)
+        topic_metadata = bertopic_engine.get_topic_info()
         
-    # BERTopic requires a sufficient number of documents to form clusters. 
-    # For a single idea + ~3 context docs, BERTopic might struggle to form meaningful clusters 
-    # without a pre-trained base model.
-    # Overriding the minimum topic size to attempt extraction.
-    if len(doc_list) >= 3:
-        try:
-             # Very conservative settings for small text clumps
-            topic_model = BERTopic(min_topic_size=2) 
-            topics_found, probs = topic_model.fit_transform(doc_list)
+        for _, row in topic_metadata.iterrows():
+            topic_idx = row['Topic']
+            if topic_idx == -1: continue # Noise suppression
             
-            # Extract top words for the found topics
-            topic_info = topic_model.get_topic_info()
-            for index, row in topic_info.iterrows():
-                if row['Topic'] != -1: # Ignore outlier topic
-                     topic_words = topic_model.get_topic(row['Topic'])
-                     if topic_words:
-                         # Just take the top word of the topic as a representative label
-                         best_word = topic_words[0][0]
-                         topics.append(best_word.capitalize())
-        except Exception as e:
-            logger.warning(f"BERTopic extraction failed or skipped due to small corpus: {e}")
+            cluster_docs = [modeling_corpus[i] for i, t in enumerate(topic_assignments) if t == topic_idx]
+            cluster_keywords = [word for word, _ in bertopic_engine.get_topic(topic_idx)][:5]
             
-    # Deduplicate and ensure we have at least 'Innovation'
-    final_topics = list(set([t for t in topics if t]))
-    if not final_topics:
-        final_topics = ["Innovation", "Technology"]
+            market_summary = synthesize_topic_cluster_summary(cluster_docs, cluster_keywords)
+            category_tag = classify_market_insight_category(market_summary)
+            
+            if category_tag in extracted_insights:
+                extracted_insights[category_tag].append(market_summary)
+
+    except Exception as e:
+        logger.error(f"BERTopic pattern mining pipeline failed: {e}")
+        return execute_llm_pattern_mining_fallback(seed_text)
+
+    # Apply default indicators if zero results found
+    for key in extracted_insights:
+        if not extracted_insights[key]:
+            extracted_insights[key] = DEFAULT_TOPICS.get(key, [])
+            
+    return extracted_insights
+
+def classify_market_insight_category(insight_text: str) -> str:
+    """
+    Categorizes a market reality summary based on linguistic indicators.
+    """
+    text_normalized = insight_text.lower()
+    
+    problem_signals = ["frustrated", "slow", "expensive", "hard", "problem", "lack", "struggle", "too", "difficult"]
+    if any(s in text_normalized for s in problem_signals):
+        return "user_pain_points"
+    
+    growth_signals = ["growing", "shift", "emerging", "trend", "adoption", "future", "market", "rising", "surge"]
+    if any(s in text_normalized for s in growth_signals):
+        return "market_trends"
         
-    return final_topics
+    return "key_features"
+
+def execute_llm_pattern_mining_fallback(idea_text: str) -> Dict[str, Any]:
+    """
+    Direct LLM-based pattern extraction for limited target data.
+    """
+    mining_prompt = f"""
+    Mine specific market patterns from this idea: {idea_text}
+    Categories: User Pain Points, Market Trends, Key Features.
+    Return JSON format only.
+    """
+    try:
+        raw_json_response = LLMService.generate(mining_prompt, json_format=True)
+        data = json.loads(raw_json_response.replace('```json', '').replace('```', '').strip())
+        return {
+            "user_pain_points": data.get("user_pain_points", DEFAULT_TOPICS["pain_points"]),
+            "market_trends": data.get("market_trends", DEFAULT_TOPICS["market_trends"]),
+            "key_features": data.get("key_features", DEFAULT_TOPICS["features"])
+        }
+    except Exception:
+        return DEFAULT_TOPICS

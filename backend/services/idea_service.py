@@ -86,7 +86,9 @@ class IdeaService:
         structured_evidence = []
         for i, doc in enumerate(market_evidence):
             source_id = i + 1
-            evidence_context += f"\n[Source {source_id}]: {doc.get('title')}\n{doc.get('content')}\n"
+            doc_title = doc.get("title") or doc.get("domain") or "Untitled"
+            doc_content = doc.get("content") or ""
+            evidence_context += f"\n[Source {source_id}]: {doc_title}\n{doc_content}\n"
             
             # Map distance to confidence (0.0 - 1.0)
             distance = doc.get("_distance", 1.0)
@@ -94,8 +96,8 @@ class IdeaService:
             
             structured_evidence.append({
                 "source_id": f"Source {source_id}",
-                "source_title": doc.get("title"),
-                "content": doc.get("content")[:200] + "...",
+                "source_title": doc_title,
+                "content": doc_content[:200] + "...",
                 "confidence_score": round(confidence, 2)
             })
 
@@ -154,31 +156,56 @@ class IdeaService:
 
     def propose_new_concept(self, request: IdeaGenerateRequest) -> IdeaGenerateResponse:
         """
-        Synthesizes a new startup concept based on market parameters.
+        Synthesizes 3 distinct startup concepts based on market parameters.
         """
         prompt = f"""
-        Suggest a viable, high-potential startup idea based on:
+        Suggest 3 distinct, high-potential startup directions based on:
         Type: {request.business_type}
         Location: {request.location}
         Budget: {request.budget}
         
-        Return JSON structure: {{"idea_description": "...", "domain": "..."}}
+        For each idea, provide:
+        - title: Short catchy name
+        - description: One sentence summary
+        - domain: e.g. Agri-Tech, FinTech
+        - score: An integer (70-95) based on current market trends
+        - features: List of 3 core features
+        - budget: e.g. "₹15L" or "$20k"
+        - market_fit_focus: e.g. "Budget Feasible", "High Retention"
+        - time_to_build: e.g. "2-5 months"
+        
+        Return JSON structure:
+        {{
+            "ideas": [
+                {{
+                    "title": "...",
+                    "description": "...",
+                    "domain": "...",
+                    "score": 0,
+                    "features": ["...", "...", "..."],
+                    "budget": "...",
+                    "market_fit_focus": "...",
+                    "time_to_build": "..."
+                }},
+                ...
+            ]
+        }}
         """
         
         try:
             llm_response = LLMService.generate(prompt, json_format=True)
             data = json.loads(llm_response.replace('```json', '').replace('```', '').strip())
             
-            # Evaluate the generated concept
-            eval_request = IdeaRequest(idea=data["idea_description"], domain=data["domain"])
-            evaluation = self.execute_startup_evaluation_pipeline(eval_request)
-            
             return IdeaGenerateResponse(
-                generated_idea=data["idea_description"],
-                evaluation=evaluation
+                ideas=data.get("ideas", []),
+                constraints={
+                    "business_type": request.business_type,
+                    "location": request.location,
+                    "budget": request.budget
+                }
             )
         except Exception as e:
-            logger.error(f"Error proposing new concept: {e}")
+            logger.error(f"Error proposing new concepts: {e}")
             raise e
 
     def _generate_refusal_response(self, idea_text: str, audit: Dict) -> IdeaResponse:
@@ -202,9 +229,13 @@ class IdeaService:
     def _build_analysis_prompt(self, idea: str, evidence: str) -> str:
         """Constructs the master synthesis prompt for the LLM."""
         return f"""
-        Role: Senior Startup Strategist.
-        Task: Analyze the idea below using Public Market Evidence. 
-        Cite sources like [Source 1], [Source 2] for all derived insights.
+        Role: Friendly Startup Helper.
+        Task: Explain this startup idea simply and check it against the market information provided.
+        
+        IMPORTANT: 
+        1. Use very simple language that anyone can understand.
+        2. If you find real companies or examples in the Market Evidence, mention them!
+        3. Make the "refined_idea" sound like a clear, helpful pitch to a friend.
         
         Idea: {idea}
         Market Evidence:
@@ -212,17 +243,17 @@ class IdeaService:
         
         Output JSON:
         {{
-            "domain": "string",
-            "target_users": "string",
-            "core_problem": "string",
-            "refined_idea": "string",
+            "domain": "string (industry)",
+            "target_users": "string (who is this for?)",
+            "core_problem": "string (what problem are we fixing?)",
+            "refined_idea": "string (a clear, simple explanation of the idea)",
             "competitors": [
                 {{"competitor_name": "string", "strengths": ["string"], "weaknesses": ["string"], "strategic_impact": "string"}}
             ],
-            "pain_points": ["string with citation"],
-            "market_trends": ["string with citation"],
-            "risk_factors": ["string with citation"],
-            "monetization": ["string"],
-            "improvements": ["string"]
+            "pain_points": ["string (at least 3 simple problems)"],
+            "market_trends": ["string (at least 3 simple trends)"],
+            "risk_factors": ["string (at least 2 things to watch out for)"],
+            "monetization": ["string (at least 2 ways to make money)"],
+            "improvements": ["string (simple ways to make it better)"]
         }}
         """

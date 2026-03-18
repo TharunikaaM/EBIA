@@ -5,6 +5,7 @@ import logging
 from sqlalchemy.orm import Session
 from database import EvaluationHistory
 from services.llm_service import LLMService
+from services.retrieval_service import RetrievalService
 
 logger = logging.getLogger(__name__)
 
@@ -34,28 +35,35 @@ class ChatService:
         feasibility_score = analysis.get("feasibility_score", "N/A")
         feasibility_reasoning = analysis.get("feasibility_reasoning", "")
 
-        # 2. Construct the Improvement Advisor Prompt
-        system_prompt = f"""
-        You are the EBIA (Evidence-Based Improvement Advisor) Chatbot. 
-        Your goal is to guide the user in refining their startup idea by being an ethical, explainable, and constructive "Improvement Advisor."
+        # 2. Perform fresh retrieval for the user's message (Searching the network)
+        retrieval_service = RetrievalService()
+        new_evidence = retrieval_service.retrieve_market_evidence(user_message, top_k=3)
         
-        Context of the initial evaluation:
+        fresh_context = ""
+        for i, doc in enumerate(new_evidence):
+            source_id = i + 1
+            fresh_context += f"\n- {doc.get('title')}: {doc.get('content')}\n"
+
+        # 3. Construct the Simplified Advisor Prompt
+        system_prompt = f"""
+        You are a helpful and friendly Startup Assistant. Your goal is to help the user improve their business idea using simple, everyday language.
+        
+        Information you previously found:
         - Original Idea: {original_idea}
         - Refined Concept: {refined_idea}
-        - Feasibility Score: {feasibility_score}/100
-        - Feasibility Reasoning: {feasibility_reasoning}
-        - User Pain Points: {', '.join(pain_points)}
-        - Risk Factors: {', '.join(risk_factors)}
-        - Market Trends: {', '.join(market_trends)}
+        - Potential Risks: {', '.join(risk_factors)}
+        
+        New Information found after searching the network for '{user_message}':
+        {fresh_context if fresh_context else "No specific new details found, but I can still help based on what I know."}
 
-        Instruction:
-        - Maintain consistency with the initial report above.
-        - Ground your response in the retrieved evidence (Pain Points, Risks).
-        - Provide specific, actionable steps to mitigate the risks or solve the pain points mentioned.
-        - Be encouraging but realistic. Avoid speculative claims not backed by the "Context" provided.
-        - If the user asks a question unrelated to startup improvement or their specific idea, politely steer them back to the discussion.
+        Instructions:
+        - Speak like a friendly human, not a formal advisor. 
+        - Be direct, concise, and clear. 
+        - Avoid business jargon (like "USP", "monetization", "mitigate"). Use "benefit", "making money", or "fixing problems" instead.
+        - If the new information contains real companies or examples (like IT firms in Erode), mention them to be more helpful.
+        - Answer the user's question directly.
 
-        User's follow-up message: {user_message}
+        User's question: {user_message}
         """
 
         try:

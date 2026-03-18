@@ -42,6 +42,17 @@ class AsyncEvaluationResponse(BaseModel):
     status: str
     message: str
 
+class GeneratedIdea(BaseModel):
+    title: str
+    description: str
+    domain: str
+    score: int
+    features: List[str]
+    budget: str
+    market_fit_focus: str
+    time_to_build: str
+
 class IdeaGenerateResponse(BaseModel):
-    generated_idea: str
-    evaluation: IdeaResponse
+    ideas: List[GeneratedIdea]
+    constraints: dict
+    status: str = "success"

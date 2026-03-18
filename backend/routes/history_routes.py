@@ -25,12 +25,13 @@ def get_user_history(db: Session = Depends(get_db), current_user: dict = Depends
         return [
             {
                 "id": h.id,
+                "idea_title": h.custom_title or (h.analysis_results.get("refined_idea", h.idea_text[:50]) if h.analysis_results else h.idea_text[:50]),
                 "idea_text": h.idea_text,
-                "custom_title": h.custom_title,
                 "is_private": h.is_private,
                 "analysis_results": h.analysis_results,
                 "status": h.status,
-                "created_at": h.created_at
+                "feasibility_score": h.analysis_results.get("feasibility_score", 0) if h.analysis_results else 0,
+                "created_at": h.created_at.strftime("%b %d, %Y") if h.created_at else "—"
             }
             for h in history
         ]

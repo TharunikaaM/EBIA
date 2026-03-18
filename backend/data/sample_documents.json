@@ -25,5 +25,57 @@
             "market_trend": "Retail investors showing strong interest in sustainable investing.",
             "risk": "Regulatory compliance and market volatility."
         }
+    },
+    {
+        "id": "4",
+        "domain": "IT Solutions",
+        "category": "Software Development",
+        "title": "SBS Technologies",
+        "content": "SBS Technologies (established 2011) is a major IT player in Erode, specializing in custom software development, mobile apps, and web solutions for Indian clients.",
+        "metadata": {
+            "location": "Erode, Tamil Nadu",
+            "established": "2011"
+        }
+    },
+    {
+        "id": "5",
+        "domain": "IT Solutions",
+        "category": "Infrastructure",
+        "title": "SYS Net Technologies",
+        "content": "SYS Net Technologies has been operating since 1999 in Erode, offering IT networking, cloud computing, and secure software systems for local businesses.",
+        "metadata": {
+            "location": "Erode, Tamil Nadu",
+            "established": "1999"
+        }
+    },
+    {
+        "id": "6",
+        "domain": "IT Solutions",
+        "category": "Enterprise",
+        "title": "URC Infotec Private Limited",
+        "content": "URC Infotec provides enterprise-level software and networking solutions in Erode, assisting businesses with IT management, security, and web development.",
+        "metadata": {
+            "location": "Erode, Tamil Nadu"
+        }
+    },
+    {
+        "id": "7",
+        "domain": "IT Solutions",
+        "category": "Web Services",
+        "title": "Aarush Infotech",
+        "content": "Aarush Infotech is a fast-growing Erode company focusing on web design, SEO, e-commerce, and cloud solutions for small and medium businesses.",
+        "metadata": {
+            "location": "Erode, Tamil Nadu"
+        }
+    },
+    {
+        "id": "8",
+        "domain": "IT Solutions",
+        "category": "Digital Marketing",
+        "title": "Hashpromt",
+        "content": "Hashpromt offers digital marketing and web/mobile development services in Erode, helping local firms enhance their online visibility.",
+        "metadata": {
+            "location": "Erode, Tamil Nadu"
+        }
     }
 ]

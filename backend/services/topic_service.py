@@ -7,6 +7,7 @@ from bertopic.vectorizers import ClassTfidfTransformer
 import logging
 import json
 from services.llm_service import LLMService
+from config.prompts import PromptConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +23,7 @@ def synthesize_topic_cluster_summary(docs: List[str], cluster_keywords: List[str
     Synthesizes a human-readable market reality from a cluster of documents using LLM.
     """
     context_blob = "\n---\n".join(docs[:5])
-    analysis_prompt = f"""
-    Analyze these market documents and keywords: {", ".join(cluster_keywords)}
-    Documents: {context_blob}
-    
-    Synthesize into ONE concise market reality sentence (max 15 words).
-    """
+    analysis_prompt = PromptConfig.get_topic_cluster_synthesis_prompt(cluster_keywords, context_blob)
     try:
         summary_text = LLMService.generate(analysis_prompt)
         return summary_text.strip()
@@ -116,11 +112,7 @@ def execute_llm_pattern_mining_fallback(idea_text: str) -> Dict[str, Any]:
     """
     Direct LLM-based pattern extraction for limited target data.
     """
-    mining_prompt = f"""
-    Mine specific market patterns from this idea: {idea_text}
-    Categories: User Pain Points, Market Trends, Key Features.
-    Return JSON format only.
-    """
+    mining_prompt = PromptConfig.get_llm_pattern_mining_prompt(idea_text)
     try:
         raw_json_response = LLMService.generate(mining_prompt, json_format=True)
         data = json.loads(raw_json_response.replace('```json', '').replace('```', '').strip())

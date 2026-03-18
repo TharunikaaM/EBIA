@@ -22,6 +22,7 @@ from services.topic_service import mine_market_patterns_and_topics
 from services.ethical_filter_service import audit_content_for_ethical_integrity
 from services.llm_service import LLMService
 from utils.text_cleaner import clean_text
+from config.prompts import PromptConfig
 
 logger = logging.getLogger(__name__)
 
@@ -158,39 +159,11 @@ class IdeaService:
         """
         Synthesizes 3 distinct startup concepts based on market parameters.
         """
-        prompt = f"""
-        Suggest 3 distinct, high-potential startup directions based on:
-        Type: {request.business_type}
-        Location: {request.location}
-        Budget: {request.budget}
-        
-        For each idea, provide:
-        - title: Short catchy name
-        - description: One sentence summary
-        - domain: e.g. Agri-Tech, FinTech
-        - score: An integer (70-95) based on current market trends
-        - features: List of 3 core features
-        - budget: e.g. "₹15L" or "$20k"
-        - market_fit_focus: e.g. "Budget Feasible", "High Retention"
-        - time_to_build: e.g. "2-5 months"
-        
-        Return JSON structure:
-        {{
-            "ideas": [
-                {{
-                    "title": "...",
-                    "description": "...",
-                    "domain": "...",
-                    "score": 0,
-                    "features": ["...", "...", "..."],
-                    "budget": "...",
-                    "market_fit_focus": "...",
-                    "time_to_build": "..."
-                }},
-                ...
-            ]
-        }}
-        """
+        prompt = PromptConfig.get_idea_synthesis_prompt(
+            request_business_type=request.business_type,
+            request_location=request.location,
+            request_budget=request.budget
+        )
         
         try:
             llm_response = LLMService.generate(prompt, json_format=True)
@@ -228,32 +201,4 @@ class IdeaService:
 
     def _build_analysis_prompt(self, idea: str, evidence: str) -> str:
         """Constructs the master synthesis prompt for the LLM."""
-        return f"""
-        Role: Friendly Startup Helper.
-        Task: Explain this startup idea simply and check it against the market information provided.
-        
-        IMPORTANT: 
-        1. Use very simple language that anyone can understand.
-        2. If you find real companies or examples in the Market Evidence, mention them!
-        3. Make the "refined_idea" sound like a clear, helpful pitch to a friend.
-        
-        Idea: {idea}
-        Market Evidence:
-        {evidence}
-        
-        Output JSON:
-        {{
-            "domain": "string (industry)",
-            "target_users": "string (who is this for?)",
-            "core_problem": "string (what problem are we fixing?)",
-            "refined_idea": "string (a clear, simple explanation of the idea)",
-            "competitors": [
-                {{"competitor_name": "string", "strengths": ["string"], "weaknesses": ["string"], "strategic_impact": "string"}}
-            ],
-            "pain_points": ["string (at least 3 simple problems)"],
-            "market_trends": ["string (at least 3 simple trends)"],
-            "risk_factors": ["string (at least 2 things to watch out for)"],
-            "monetization": ["string (at least 2 ways to make money)"],
-            "improvements": ["string (simple ways to make it better)"]
-        }}
-        """
+        return PromptConfig.get_analysis_prompt(idea, evidence)

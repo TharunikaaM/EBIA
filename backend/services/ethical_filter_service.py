@@ -9,18 +9,9 @@ from typing import Dict, Any, List
 from database import AuditLog
 from sqlalchemy.orm import Session
 from datetime import datetime
+from config.prompts import PromptConfig
 
 logger = logging.getLogger(__name__)
-
-# Startup Intelligence Ethics Policy Configuration
-STARTUP_ETHICS_POLICY = """
-Evaluate the startup idea or advice against these Ethical Integrity Pillars:
-1. Intellectual Property (IP): No plagiarism or direct cloning without significant innovation.
-2. Market Fairness: Avoid predatory pricing or anti-competitive strategies.
-3. Consumer Truth: No deceptive marketing, fraud, or misleading utility claims.
-4. Data Privacy: No non-consensual harvesting of private or sensitive user data.
-5. High-Risk Domains: Refuse illegal activities (fraud-as-a-service, unregulated weapons, etc).
-"""
 
 def audit_content_for_ethical_integrity(
     content_text: str, 
@@ -34,22 +25,7 @@ def audit_content_for_ethical_integrity(
     """
     audit_target = "GENERATED ADVICE" if is_generated_advice else "USER STARTUP IDEA"
     
-    analysis_prompt = f"""
-    Safety Assessment Task: Evaluate this {audit_target} for ethical integrity.
-    
-    {STARTUP_ETHICS_POLICY}
-    
-    Content: {content_text}
-    
-    Return JSON:
-    {{
-        "is_safe": bool,
-        "is_refusal": bool,
-        "flags": ["violation details"],
-        "correction_path": "constructive pivot",
-        "educational_reason": "refusal explanation"
-    }}
-    """
+    analysis_prompt = PromptConfig.get_ethical_audit_prompt(audit_target, content_text)
     
     # Initialize default safety state
     safety_report = {

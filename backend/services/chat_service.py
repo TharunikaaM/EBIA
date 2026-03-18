@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import EvaluationHistory
 from services.llm_service import LLMService
 from services.retrieval_service import RetrievalService
+from config.prompts import PromptConfig
 
 logger = logging.getLogger(__name__)
 
@@ -45,26 +46,13 @@ class ChatService:
             fresh_context += f"\n- {doc.get('title')}: {doc.get('content')}\n"
 
         # 3. Construct the Simplified Advisor Prompt
-        system_prompt = f"""
-        You are a helpful and friendly Startup Assistant. Your goal is to help the user improve their business idea using simple, everyday language.
-        
-        Information you previously found:
-        - Original Idea: {original_idea}
-        - Refined Concept: {refined_idea}
-        - Potential Risks: {', '.join(risk_factors)}
-        
-        New Information found after searching the network for '{user_message}':
-        {fresh_context if fresh_context else "No specific new details found, but I can still help based on what I know."}
-
-        Instructions:
-        - Speak like a friendly human, not a formal advisor. 
-        - Be direct, concise, and clear. 
-        - Avoid business jargon (like "USP", "monetization", "mitigate"). Use "benefit", "making money", or "fixing problems" instead.
-        - If the new information contains real companies or examples (like IT firms in Erode), mention them to be more helpful.
-        - Answer the user's question directly.
-
-        User's question: {user_message}
-        """
+        system_prompt = PromptConfig.get_chat_followup_prompt(
+            original_idea=original_idea,
+            refined_idea=refined_idea,
+            risk_factors=risk_factors,
+            user_message=user_message,
+            fresh_context=fresh_context
+        )
 
         try:
             # 3. Generate response using LLMService

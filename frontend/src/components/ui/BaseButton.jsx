@@ -4,8 +4,8 @@ const styles = {
   primary:
     'bg-blue-600 text-white hover:bg-blue-700 shadow-[0_12px_22px_-14px_rgba(37,99,235,0.55)]',
   secondary:
-    'bg-white text-slate-700 hover:bg-slate-50 ring-1 ring-slate-200 shadow-sm',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100/70',
+    'bg-[var(--bg-card)] text-[var(--text-main)] hover:bg-[var(--bg-subtle)] border border-[var(--border-color)] shadow-sm',
+  ghost: 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]',
 };
 
 const sizes = {

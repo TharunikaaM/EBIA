@@ -20,26 +20,25 @@ function HeaderLink({ to, children }) {
 }
 
 const LogoIcon = () => (
-  <svg 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg" 
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
     className="h-9 w-9"
   >
-    {/* Stacked rhombuses logo */}
-    <path 
-      d="M12 4L3 8.5L12 13L21 8.5L12 4Z" 
-      fill="white" 
+    <path
+      d="M12 4L3 8.5L12 13L21 8.5L12 4Z"
+      fill="white"
       className="opacity-100"
     />
-    <path 
-      d="M3 12.5L12 17L21 12.5L12 8L3 12.5Z" 
-      fill="white" 
+    <path
+      d="M3 12.5L12 17L21 12.5L12 8L3 12.5Z"
+      fill="white"
       className="opacity-60"
     />
-    <path 
-      d="M3 16.5L12 21L21 16.5L12 12L3 16.5Z" 
-      fill="white" 
+    <path
+      d="M3 16.5L12 21L21 16.5L12 12L3 16.5Z"
+      fill="white"
       className="opacity-30"
     />
   </svg>
@@ -50,7 +49,7 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-[#1e4ad8] text-white border-b border-white/10 shadow-sm">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1920px] items-center justify-between px-6 lg:px-10">
         <div
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => navigate('/analyze')}

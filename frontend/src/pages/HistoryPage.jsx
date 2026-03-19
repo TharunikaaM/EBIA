@@ -6,9 +6,9 @@ import BaseButton from '../components/ui/BaseButton';
 function ScorePill({ score }) {
   const s = Number(score) || 0;
   const color =
-    s >= 85 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
-    : s >= 70 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
-    : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+    s >= 85 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+      : s >= 70 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
   return (
     <span className={`inline-flex items-center rounded-full px-4 py-1.5 text-xs font-bold shadow-sm ${color}`}>
       {s}%
@@ -20,7 +20,7 @@ export default function HistoryPage({ historyList = [], onOpen }) {
   const navigate = useNavigate();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 md:py-16">
+    <div className="mx-auto max-w-7xl px-6 py-6 md:py-10">
       <button
         onClick={() => navigate(-1)}
         className="mb-8 flex items-center gap-2 text-sm font-bold text-[var(--text-muted)] hover:text-blue-600 transition-colors group"
@@ -44,10 +44,10 @@ export default function HistoryPage({ historyList = [], onOpen }) {
         </div>
       </div>
 
-      <BaseCard className="p-0 overflow-hidden shadow-xl border-none">
+      <BaseCard className="p-0 overflow-hidden shadow-xl border-none bg-[var(--bg-card)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 dark:bg-slate-900/50 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+            <thead className="bg-[var(--bg-main)] text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border-color)]">
               <tr>
                 <th className="px-8 py-5">Project / Idea</th>
                 <th className="px-8 py-5">Analysis Date</th>
@@ -60,7 +60,7 @@ export default function HistoryPage({ historyList = [], onOpen }) {
                 <tr>
                   <td className="px-8 py-20 text-center text-[var(--text-muted)]" colSpan={4}>
                     <div className="flex flex-col items-center gap-4">
-                      <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="p-4 rounded-full bg-[var(--bg-subtle)]">
                         <Search className="h-8 w-8 opacity-20" />
                       </div>
                       <p className="font-bold">No history yet. Start by analyzing an idea!</p>
@@ -70,7 +70,7 @@ export default function HistoryPage({ historyList = [], onOpen }) {
                 </tr>
               ) : (
                 historyList.map((h) => (
-                  <tr key={h.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors group">
+                  <tr key={h.id} className="hover:bg-[var(--bg-subtle)]/30 transition-colors group">
                     <td className="px-8 py-5">
                       <div className="font-extrabold text-base group-hover:text-blue-600 transition-colors">
                         {h.project_name || h.idea_title || 'Untitled idea'}

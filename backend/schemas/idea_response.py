@@ -24,8 +24,11 @@ class IdeaResponse(BaseModel):
     original_idea: str
     refined_idea: str
     extracted_features: FeatureExtraction
-    feasibility_score: int
+    feasibility_score: float
     feasibility_reasoning: str
+    market_potential: Optional[int] = 80
+    audience_clarity: Optional[str] = "High"
+    roadmap: Optional[List[str]] = []
     competitor_overview: List[CompetitorOverview]
     user_pain_points: List[str]
     market_trends: List[str]
@@ -48,7 +51,8 @@ class GeneratedIdea(BaseModel):
     domain: str
     score: int
     features: List[str]
-    budget: str
+    target_audience: Optional[str] = "Broad Market"
+    revenue_model: Optional[str] = "Subscription"
     market_fit_focus: str
     time_to_build: str
 

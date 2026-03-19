@@ -10,7 +10,7 @@ export default function ProfilePage({ user, theme, setTheme }) {
   const [location, setLocation] = useState('Singapore');
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 md:py-16">
+    <div className="mx-auto max-w-7xl px-6 py-6 md:py-10">
       {/* Global Back Button */}
       <button
         onClick={() => navigate(-1)}
@@ -38,7 +38,6 @@ export default function ProfilePage({ user, theme, setTheme }) {
                 <span>{user?.email || 'guest@local'}</span>
               </div>
             </div>
-            <BaseButton variant="secondary" className="rounded-xl">Edit Profile</BaseButton>
           </div>
         </BaseCard>
 
@@ -46,12 +45,12 @@ export default function ProfilePage({ user, theme, setTheme }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <BaseCard className="p-8">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
+              <div className="p-4 rounded-full bg-[var(--bg-subtle)]">
                 {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
               </div>
               <h3 className="font-bold text-lg text-[var(--text-main)]">Appearance</h3>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg-main)] border border-[var(--border-color)]">
               <div>
                 <div className="font-bold text-sm text-[var(--text-main)]">Dark Mode</div>
@@ -61,7 +60,7 @@ export default function ProfilePage({ user, theme, setTheme }) {
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 className={cn(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
-                  theme === 'dark' ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+                  theme === 'dark' ? "bg-blue-600" : "bg-[var(--border-color)]"
                 )}
               >
                 <span

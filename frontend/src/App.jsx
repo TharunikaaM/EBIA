@@ -60,8 +60,20 @@ export default function App() {
   const [isChatTyping, setIsChatTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Step-based Generation
+  const [genStep, setGenStep] = useState(1); // 1 = SaaS/Non-SaaS, 2 = Details
+  const [genType, setGenType] = useState('SaaS'); // SaaS | Non-SaaS
+
+  // Same-page analysis results
+  const [isEvaluationVisible, setIsEvaluationVisible] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Reset evaluation when idea changes
+  useEffect(() => {
+    if (ideaInput.length === 0) setIsEvaluationVisible(false);
+  }, [ideaInput]);
 
   // Axios
   const api = useMemo(() => axios.create({ baseURL: API_BASE_URL }), []);
@@ -80,12 +92,12 @@ export default function App() {
     if (!existing) {
       axios.post(`${API_BASE_URL}/api/v1/auth/guest`)
         .then(r => { if (r.data?.access_token) localStorage.setItem('ebia_token', r.data.access_token); })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, []);
 
   const pollStatus = useCallback(async (taskId) => {
-    const msgs = ['Scanning market signals…', 'Finding your competitors…', 'Scoring your idea…', 'Building your report…'];
+    const msgs = ['Scanning market signals…', 'Finding your competitors…', 'Scoring your idea…', 'Building your roadmap…'];
     let i = 0;
     const iv = setInterval(async () => {
       try {
@@ -95,7 +107,7 @@ export default function App() {
           setEvaluation(res.data.results);
           setEvaluationId(res.data.id);
           setIsLoading(false);
-          navigate('/evaluation');
+          setIsEvaluationVisible(true);
         } else if (res.data.status === 'FAILED') {
           clearInterval(iv);
           setIsLoading(false);
@@ -109,12 +121,13 @@ export default function App() {
         toast.error('Lost connection to server.');
       }
     }, 3000);
-  }, []);
+  }, [api]);
 
   const handleEvaluate = useCallback(async () => {
     if (!ideaInput || ideaInput.length < 10) return toast.error('Tell us a bit more about your idea!');
     setIsLoading(true);
     setGeneratedIdeas(null);
+    setIsEvaluationVisible(false);
     try {
       const res = await api.post('/api/v1/idea/evaluate', { idea: ideaInput, is_private: isPrivate });
       pollStatus(res.data.task_id);
@@ -122,17 +135,21 @@ export default function App() {
       setIsLoading(false);
       toast.error(err.response?.data?.detail || 'Could not connect to the server.');
     }
-  }, [ideaInput, isPrivate, pollStatus]);
+  }, [ideaInput, isPrivate, pollStatus, api]);
 
   const handleGenerate = useCallback(async () => {
-    if (!domain) return toast.error('Tell us what domain you want to explore!');
     setIsLoading(true);
     setEvaluation(null);
+    setIsEvaluationVisible(false);
+
+    // Construct better business_type based on selection
+    const finalType = genType === 'SaaS' ? `SaaS Platform for ${domain}` : `${domain} (Physical/Local Business)`;
+
     try {
       const res = await api.post('/api/v1/idea/generate', {
-        business_type: domain, // Backend expects business_type
-        location: targetLocation || 'Global', // Backend expects location
-        budget: budgetRange || 'Bootstrapped' // Backend expects budget
+        business_type: finalType,
+        location: targetLocation || 'Global',
+        budget: budgetRange || 'Flexible'
       });
       setGeneratedIdeas(res.data);
       setIsLoading(false);
@@ -143,7 +160,7 @@ export default function App() {
       setIsLoading(false);
       toast.error(err.response?.data?.detail || 'Generation failed. Please check your inputs.');
     }
-  }, [domain, targetLocation, budgetRange, api, navigate]);
+  }, [domain, targetLocation, budgetRange, genType, api, navigate]);
 
   const handleSendMessage = async (msg) => {
     if (!evaluationId) {
@@ -183,6 +200,10 @@ export default function App() {
       handleEvaluate();
       return;
     }
+    if (genStep === 1) {
+      setGenStep(2);
+      return;
+    }
     handleGenerate();
   };
 
@@ -198,23 +219,47 @@ export default function App() {
             isLoading ? (
               <LoadingPage message={loadingMsg} />
             ) : (
-              <LandingPage
-                ideaInput={ideaInput}
-                setIdeaInput={setIdeaInput}
-                mode={landingMode}
-                setMode={setLandingMode}
-                isPrivate={isPrivate}
-                setIsPrivate={setIsPrivate}
-                domain={domain}
-                setDomain={setDomain}
-                location={targetLocation}
-                setLocation={setTargetLocation}
-                budget={budgetRange}
-                setBudget={setBudgetRange}
-                businessModel={businessModel}
-                setBusinessModel={setBusinessModel}
-                onPrimaryAction={primaryFromLanding}
-              />
+              <div className="space-y-12">
+                <LandingPage
+                  ideaInput={ideaInput}
+                  setIdeaInput={setIdeaInput}
+                  mode={landingMode}
+                  setMode={setLandingMode}
+                  isPrivate={isPrivate}
+                  setIsPrivate={setIsPrivate}
+                  domain={domain}
+                  setDomain={setDomain}
+                  location={targetLocation}
+                  setLocation={setTargetLocation}
+                  budget={budgetRange}
+                  setBudget={setBudgetRange}
+                  businessModel={businessModel}
+                  setBusinessModel={setBusinessModel}
+                  onPrimaryAction={primaryFromLanding}
+                  genStep={genStep}
+                  setGenStep={setGenStep}
+                  genType={genType}
+                  setGenType={setGenType}
+                />
+
+                {isEvaluationVisible && evaluation && (
+                  <div className="animate-in fade-in slide-in-from-bottom-5 duration-700">
+                    <EvaluationPage
+                      isPrivate={isPrivate}
+                      setIsPrivate={setIsPrivate}
+                      evaluation={evaluation}
+                      chatMessages={
+                        chatMessages.length
+                          ? chatMessages
+                          : [{ role: 'assistant', content: "I've reviewed your evaluation. What would you like to refine?" }]
+                      }
+                      isChatTyping={isChatTyping}
+                      onDiscuss={handleSendMessage}
+                      hideHeader
+                    />
+                  </div>
+                )}
+              </div>
             )
           }
         />
@@ -227,7 +272,7 @@ export default function App() {
                 location: targetLocation || 'Singapore',
                 budget: budgetRange || '<$50k',
               }}
-              setFounderConstraints={() => {}}
+              setFounderConstraints={() => { }}
               workspaceQuery={workspaceQuery}
               setWorkspaceQuery={setWorkspaceQuery}
               ideas={generatedIdeas?.ideas || generatedIdeas || []}
@@ -237,9 +282,11 @@ export default function App() {
                 navigate('/analyze');
               }}
               onRefineIdeas={() => {
+                setGenStep(1);
                 setLandingMode('generate');
                 navigate('/analyze');
               }}
+              onRegenerate={handleGenerate}
               isPrivate={isPrivate}
               setIsPrivate={setIsPrivate}
             />

@@ -64,20 +64,26 @@ class PromptConfig:
     @staticmethod
     def get_idea_synthesis_prompt(request_business_type: str, request_location: str, request_budget: str) -> str:
         return f"""
-        Suggest 3 distinct, high-potential startup directions based on:
-        Type: {request_business_type}
+        Role: Master Startup Architect
+        Task: Suggest 3 distinct, high-potential startup directions based on:
+        Type: {request_business_type} (If SaaS, focus on digital scale; if Non-SaaS, focus on local/physical operations)
         Location: {request_location}
         Budget: {request_budget}
         
+        Requirements:
+        1. No repetition: Suggestions must be unique and diverse.
+        2. Format: Return results as a list of 3 objects in structured English.
+        
         For each idea, provide:
         - title: Short catchy name
-        - description: One sentence summary
-        - domain: e.g. Agri-Tech, FinTech
-        - score: An integer (70-95) based on current market trends
-        - features: List of 3 core features
-        - budget: e.g. "₹15L" or "$20k"
-        - market_fit_focus: e.g. "Budget Feasible", "High Retention"
-        - time_to_build: e.g. "2-5 months"
+        - description: One sentence summary of the "why" and "how".
+        - domain: e.g. EdTech, HealthTech, Retail, F&B
+        - score: An integer (70-95) based on current local and global trends.
+        - features: List of 3 core features.
+        - target_audience: Who exactly is this for?
+        - revenue_model: How will it make money simply?
+        - market_fit_focus: e.g. "High Retention", "Low OpEx", "Scalable Tech".
+        - time_to_build: e.g. "2-5 months".
         
         Return JSON structure:
         {{
@@ -88,7 +94,8 @@ class PromptConfig:
                     "domain": "...",
                     "score": 0,
                     "features": ["...", "...", "..."],
-                    "budget": "...",
+                    "target_audience": "...",
+                    "revenue_model": "...",
                     "market_fit_focus": "...",
                     "time_to_build": "..."
                 }},
@@ -100,32 +107,42 @@ class PromptConfig:
     @staticmethod
     def get_analysis_prompt(idea: str, evidence: str) -> str:
         return f"""
-        Role: Friendly Startup Helper.
-        Task: Explain this startup idea simply and check it against the market information provided.
+        Role: Expert Startup Strategist (Helpful & Friendly).
+        Task: Analyze and validate this startup idea.
         
-        IMPORTANT: 
-        1. Use very simple language that anyone can understand.
-        2. If you find real companies or examples in the Market Evidence, mention them!
-        3. Make the "refined_idea" sound like a clear, helpful pitch to a friend.
+        SUPPORT MULTILINGUAL: 
+        The input might be in English, Tamil, or Mixed (Tanglish).
+        Internally normalize the meaning but ALWAYS return the final output in structured, clear English.
         
         Idea: {idea}
         Market Evidence:
         {evidence}
         
+        Evaluation Guidelines:
+        1. "refined_idea": A clear, helpful 2-sentence pitch.
+        2. "roadmap": Provide a 4-step execution roadmap (e.g., Step 1: MVP, Step 2: Branding...).
+        3. "risks": List at least 3 realistic challenges (Market, OpEx, Tech).
+        4. "improvements": 3 specific, actionable suggestions.
+        5. "market_potential": 0-100 score.
+        6. "audience_clarity": High/Medium/Low with reason.
+        
         Output JSON:
         {{
             "domain": "string (industry)",
-            "target_users": "string (who is this for?)",
-            "core_problem": "string (what problem are we fixing?)",
-            "refined_idea": "string (a clear, simple explanation of the idea)",
+            "target_users": "string",
+            "core_problem": "string",
+            "refined_idea": "string",
+            "market_potential": 85,
+            "audience_clarity": "High",
+            "roadmap": ["Step 1...", "Step 2...", "Step 3...", "Step 4..."],
             "competitors": [
                 {{"competitor_name": "string", "strengths": ["string"], "weaknesses": ["string"], "strategic_impact": "string"}}
             ],
-            "pain_points": ["string (at least 3 simple problems)"],
-            "market_trends": ["string (at least 3 simple trends)"],
-            "risk_factors": ["string (at least 2 things to watch out for)"],
-            "monetization": ["string (at least 2 ways to make money)"],
-            "improvements": ["string (simple ways to make it better)"]
+            "pain_points": ["string (at least 3)"],
+            "market_trends": ["string (at least 3)"],
+            "risk_factors": ["string (at least 3)"],
+            "monetization": ["string (at least 2)"],
+            "improvements": ["string (at least 3)"]
         }}
         """
 

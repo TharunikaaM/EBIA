@@ -1,9 +1,11 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @theme {
   --color-primary: #1e4ad8;
   --color-primary-light: #3b82f6;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
 }
 
 @layer base {
@@ -11,10 +13,15 @@
     --bg-main: #f8fafc;
     --bg-card: #ffffff;
     --bg-input: #ffffff;
-    --text-main: #111827; /* gray-900 */
-    --text-muted: #4b5563; /* gray-600 */
+    --bg-subtle: #f1f5f9;
+    /* slate-100 */
+    --text-main: #111827;
+    /* gray-900 */
+    --text-muted: #4b5563;
+    /* gray-600 */
     --text-input: #111827;
     --border-color: #e2e8f0;
+    --border-muted: #f1f5f9;
     --border-input: #e2e8f0;
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -22,13 +29,23 @@
 
   .dark {
     --bg-main: #020617;
+    /* slate-950 */
     --bg-card: #0f172a;
+    /* slate-900 */
     --bg-input: #1e293b;
-    --text-main: #ffffff; /* text-white */
-    --text-muted: #d1d5db; /* gray-300 */
+    /* slate-800 */
+    --bg-subtle: #1e293b;
+    /* slate-800 */
+    --text-main: #f8fafc;
+    /* slate-50 */
+    --text-muted: #94a3b8;
+    /* slate-400 */
     --text-input: #ffffff;
-    --border-color: #1e293b;
-    --border-input: #334155;
+    --border-color: #334155;
+    /* slate-700 */
+    --border-muted: #1e293b;
+    /* slate-800 */
+    --border-input: #475569;
   }
 
   html,

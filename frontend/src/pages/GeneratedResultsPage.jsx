@@ -22,6 +22,7 @@ export default function GeneratedResultsPage({
 }) {
   const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [savedIds, setSavedIds] = useState([]);
 
   const nextIdea = () => {
     if (selectedIndex === null) return;
@@ -34,6 +35,13 @@ export default function GeneratedResultsPage({
   };
 
   const currentIdea = selectedIndex !== null ? ideas[selectedIndex] : null;
+
+  const handleSave = () => {
+    if (!currentIdea) return;
+    onSaveIdea?.(currentIdea);
+    setSavedIds(prev => [...prev, currentIdea.id || currentIdea.title]);
+    setSelectedIndex(null);
+  };
 
 
   return (
@@ -85,6 +93,7 @@ export default function GeneratedResultsPage({
                       mvpBudget={idea.budget || idea.mvp_budget}
                       targetAudience={idea.target_audience}
                       revenueModel={idea.revenue_model}
+                      isSaved={savedIds.includes(idea.id || idea.title)}
                       onAnalyze={(e) => {
                         e.stopPropagation();
                         onAnalyzeIdea(idea);
@@ -210,14 +219,16 @@ export default function GeneratedResultsPage({
                     </BaseButton>
                     <BaseButton
                       variant="secondary"
-                      onClick={() => {
-                        onSaveIdea?.(currentIdea);
-                        setSelectedIndex(null);
-                      }}
-                      className="flex-1 h-14 rounded-2xl border-2 border-slate-100 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2"
+                      onClick={handleSave}
+                      className={cn(
+                        "flex-1 h-14 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all",
+                        savedIds.includes(currentIdea.id || currentIdea.title)
+                          ? "bg-blue-50 border-blue-200 text-blue-600"
+                          : "border-slate-100 dark:border-slate-800"
+                      )}
                     >
-                      <Bookmark className="h-4 w-4 text-blue-600" />
-                      Save for Later
+                      <Bookmark className={cn("h-4 w-4", savedIds.includes(currentIdea.id || currentIdea.title) ? "fill-current" : "text-blue-600")} />
+                      {savedIds.includes(currentIdea.id || currentIdea.title) ? "Selected" : "Save for Later"}
                     </BaseButton>
                   </div>
                 </div>

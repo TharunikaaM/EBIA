@@ -124,7 +124,7 @@ export default function EvaluationPage({
           icon={Sparkles}
           title="Execution Roadmap"
           className="lg:col-span-2 border-blue-500/20 bg-blue-50/30 dark:bg-blue-900/10"
-          lines={evaluation?.roadmap?.length ? evaluation.roadmap : ['Step 1: Define MVP', 'Step 2: User Validation', 'Step 3: Build Beta', 'Step 4: Scale Operations']}
+          lines={evaluation?.roadmap?.length ? evaluation.roadmap : ['Step 1: Market Deep-Dive', 'Step 2: Technical Architecture', 'Step 3: Legal & Financial Structuring', 'Step 4: Alpha Launch', 'Step 5: Growth Sprints']}
         />
         <InsightTile
           number={3}

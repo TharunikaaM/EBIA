@@ -1,6 +1,7 @@
 import BaseCard from './BaseCard';
 import BaseButton from './BaseButton';
 import { cn } from '../../lib/cn';
+import { Bookmark } from 'lucide-react';
 
 export default function IdeaCard({
   icon: Icon,
@@ -11,9 +12,21 @@ export default function IdeaCard({
   targetAudience,
   revenueModel,
   onAnalyze,
+  isSaved = false,
 }) {
   return (
-    <BaseCard className="group p-6 flex flex-col h-full shadow-lg border-[var(--border-color)] transition-all hover:scale-[1.02] bg-[var(--bg-card)]">
+    <BaseCard className={cn(
+      "group p-6 flex flex-col h-full shadow-lg border-[var(--border-color)] transition-all hover:scale-[1.02] bg-[var(--bg-card)] relative overflow-hidden",
+      isSaved && "border-blue-500/50 ring-1 ring-blue-500/20 shadow-blue-500/5"
+    )}>
+      {isSaved && (
+        <div className="absolute top-0 right-0 p-4">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-bl-2xl bg-blue-600 text-white shadow-lg animate-in slide-in-from-top-4 duration-300">
+            <Bookmark className="h-3 w-3 fill-current" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Selected</span>
+          </div>
+        </div>
+      )}
       <div className="flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -65,19 +65,23 @@ class PromptConfig:
     def get_idea_synthesis_prompt(request_business_type: str, request_location: str, request_budget: str) -> str:
         return f"""
         Role: Master Startup Architect
-        Task: Suggest 3 distinct, high-potential startup directions based on:
-        Type: {request_business_type} (If SaaS, focus on digital scale; if Non-SaaS, focus on local/physical operations)
-        Location: {request_location}
-        Budget: {request_budget}
+        Task: Suggest 3 distinct, high-potential startup directions STRICTLY within the {request_business_type} domain.
+        
+        Constraints:
+        - Domain/Industry: {request_business_type} (CRITICAL: Every idea MUST be directly relevant to this specific domain).
+        - Location: {request_location}
+        - Budget: {request_budget}
         
         Requirements:
-        1. No repetition: Suggestions must be unique and diverse.
-        2. Format: Return results as a list of 3 objects in structured English.
+        1. Strict Relevance: The ideas must solve real problems specifically within the {request_business_type} sector.
+        2. Domain Mention: Every idea's description MUST explicitly mention how it fits into the {request_business_type} industry.
+        3. No Generic Ideas: Avoid generic "e-commerce" or "delivery" apps unless they have a very specific, unique twist for {request_business_type}.
+        4. Innovation: Suggest concepts that are modern and trending (e.g., AI-integrated, sustainable, or platform-based).
         
         For each idea, provide:
         - title: Short catchy name
-        - description: One sentence summary of the "why" and "how".
-        - domain: e.g. EdTech, HealthTech, Retail, F&B
+        - description: One sentence summary that EXPLICITLY mentions the {request_business_type} focus.
+        - domain: {request_business_type}
         - score: An integer (70-95) based on current local and global trends.
         - features: List of 3 core features.
         - target_audience: Who exactly is this for?
@@ -124,15 +128,14 @@ class PromptConfig:
         
         Evaluation Guidelines:
         1. "refined_idea": A clear, helpful 2-sentence pitch.
-        2. "roadmap": Provide a 4-step execution roadmap (e.g., Step 1: MVP, Step 2: Branding...).
-        3. "risks": List at least 3 realistic challenges (Market, OpEx, Tech).
+        2. "roadmap": Provide a 5-step high-intent execution roadmap (e.g., Step 1: Market Deep-Dive, Step 2: Technical Architecture, Step 3: Legal & Financial Structuring, Step 4: Alpha Launch, Step 5: Growth Sprints).
+        3. "risks": List at least 4 realistic, categorized challenges (e.g., "Operational: ...", "Financial: ...", "Technical: ...").
         4. "improvements": 3 specific, actionable suggestions.
         5. "market_potential": 0-100 score.
         6. "audience_clarity": High/Medium/Low with reason.
         
         IMPORTANT ON COMPETITORS & LOCATION:
         - If the user has NOT specified a location (e.g. it's "Global" or empty), list standard Global competitors but ADD a note in the 'refined_idea' or 'competitors' sections that "For more accurate local competitors, please specify a target city/region."
-        - Be honest: if you can't find direct competitors for a specific niche without a location, say so.
         
         Output JSON:
         {{
@@ -142,13 +145,13 @@ class PromptConfig:
             "refined_idea": "string (Start with a ⚡ for energy!)",
             "market_potential": 85,
             "audience_clarity": "High",
-            "roadmap": ["Step 1...", "Step 2...", "Step 3...", "Step 4..."],
+            "roadmap": ["Step 1...", "Step 2...", "Step 3...", "Step 4...", "Step 5..."],
             "competitors": [
                 {{"competitor_name": "string", "strengths": ["string"], "weaknesses": ["string"], "strategic_impact": "string"}}
             ],
             "pain_points": ["string (at least 3)"],
             "market_trends": ["string (at least 3)"],
-            "risk_factors": ["string (at least 3)"],
+            "risk_factors": ["string (at least 4 with categories)"],
             "monetization": ["string (at least 2)"],
             "improvements": ["string (at least 3)"]
         }}

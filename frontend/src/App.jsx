@@ -306,6 +306,11 @@ export default function App() {
                   setGenStep={setGenStep}
                   genType={genType}
                   setGenType={setGenType}
+                  isEvaluationVisible={isEvaluationVisible}
+                  evaluation={evaluation}
+                  onDiscuss={handleSendMessage}
+                  chatMessages={chatMessages}
+                  isChatTyping={isChatTyping}
                 />
               </div>
             )
@@ -335,6 +340,7 @@ export default function App() {
                 navigate('/analyze');
               }}
               onRegenerate={handleGenerate}
+              onSaveIdea={handleSaveIdea}
               isPrivate={isPrivate}
               setIsPrivate={setIsPrivate}
             />

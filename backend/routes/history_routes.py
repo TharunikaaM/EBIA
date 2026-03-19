@@ -26,7 +26,7 @@ def get_user_history(db: Session = Depends(get_db), current_user: dict = Depends
         return [
             {
                 "id": h.id,
-                "idea_title": h.custom_title or (h.analysis_results.get("refined_idea", h.idea_text[:50]) if h.analysis_results else h.idea_text[:50]),
+                "idea_title": h.custom_title or h.idea_text[:50],
                 "idea_text": h.idea_text,
                 "is_private": h.is_private,
                 "analysis_results": h.analysis_results,

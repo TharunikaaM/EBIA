@@ -74,6 +74,18 @@ class AuditLog(Base):
     details = Column(JSON)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+class SavedIdea(Base):
+    """
+    Stores ideas that the user wants to keep for later.
+    """
+    __tablename__ = "saved_ideas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, index=True)
+    title = Column(String)
+    content = Column(JSON) # Stores the full GeneratedIdea object
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 def get_db():
     """
     Dependency for obtaining a database session.

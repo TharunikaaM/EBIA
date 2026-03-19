@@ -20,6 +20,7 @@ export default function App() {
   const [user] = useState({ name: 'Guest User', email: 'guest@local' });
   const [apiConnected, setApiConnected] = useState(false);
   const [historyList, setHistoryList] = useState([]);
+  const [savedIdeas, setSavedIdeas] = useState([]);
 
   // Theme state
   const [theme, setTheme] = useState(() => {
@@ -108,12 +109,18 @@ export default function App() {
           setEvaluationId(res.data.id);
           setIsLoading(false);
           setIsEvaluationVisible(true);
+          navigate('/evaluation');
         } else if (res.data.status === 'FAILED') {
           clearInterval(iv);
           setIsLoading(false);
           toast.error('Something went wrong. Please try again.');
         } else {
-          setLoadingMsg(msgs[i++ % msgs.length]);
+          // Show the actual status from the backend if it's informative
+          if (res.data.status && res.data.status !== 'PENDING') {
+            setLoadingMsg(`${res.data.status}…`);
+          } else {
+            setLoadingMsg(msgs[i++ % msgs.length]);
+          }
         }
       } catch {
         clearInterval(iv);
@@ -128,8 +135,15 @@ export default function App() {
     setIsLoading(true);
     setGeneratedIdeas(null);
     setIsEvaluationVisible(false);
+    setChatMessages([]);
     try {
-      const res = await api.post('/api/v1/idea/evaluate', { idea: ideaInput, is_private: isPrivate });
+      const res = await api.post('/api/v1/idea/evaluate', {
+        idea: ideaInput,
+        is_private: isPrivate,
+        domain: domain,
+        location: targetLocation,
+        budget: budgetRange
+      });
       pollStatus(res.data.task_id);
     } catch (err) {
       setIsLoading(false);
@@ -164,8 +178,8 @@ export default function App() {
 
   const handleSendMessage = async (msg) => {
     if (!evaluationId) {
-      toast.error("No active evaluation to discuss.");
-      return Promise.reject("No evaluation");
+      toast.error("I need a moment to lock in your evaluation ID! If this persists, please re-analyze your idea. 🛡️");
+      return Promise.reject("No evaluationId");
     }
     const newMessages = [...chatMessages, { role: 'user', content: msg }];
     setChatMessages(newMessages);
@@ -191,8 +205,60 @@ export default function App() {
     } catch { toast.error('Could not load your history.'); }
   };
 
+  const deleteHistoryItem = async (id) => {
+    try {
+      await api.delete(`/api/v1/history/${id}`);
+      setHistoryList(prev => prev.filter(h => h.id !== id));
+    } catch { toast.error('Could not delete entry.'); }
+  };
+
+  const deleteMultipleHistoryItems = async (ids) => {
+    try {
+      await api.post('/api/v1/history/delete-multiple', ids);
+      setHistoryList(prev => prev.filter(h => !ids.includes(h.id)));
+      toast.success(`${ids.length} entries removed. 🛡️`);
+    } catch { toast.error('Could not delete selected items.'); }
+  };
+
+  const clearAllHistory = async () => {
+    try {
+      await api.delete('/api/v1/history/');
+      setHistoryList([]);
+      toast.success('Your entire history has been cleared. 🛡️');
+    } catch { toast.error('Could not clear history.'); }
+  };
+
+  const fetchSavedIdeas = async () => {
+    try {
+      const res = await api.get('/api/v1/saved-ideas');
+      setSavedIdeas(res.data);
+    } catch { toast.error('Could not load saved ideas.'); }
+  };
+
+  const handleSaveIdea = async (idea) => {
+    try {
+      await api.post('/api/v1/saved-ideas', {
+        title: idea.title,
+        content: idea
+      });
+      fetchSavedIdeas();
+      toast.success('Idea saved to your profile! ✨');
+    } catch (err) {
+      toast.error('Could not save idea.');
+    }
+  };
+
+  const handleDeleteSavedIdea = async (id) => {
+    try {
+      await api.delete(`/api/v1/saved-ideas/${id}`);
+      setSavedIdeas(prev => prev.filter(i => i.id !== id));
+      toast.success('Idea removed.');
+    } catch { toast.error('Could not remove idea.'); }
+  };
+
   useEffect(() => {
     if (location.pathname === '/history') fetchHistory();
+    if (location.pathname === '/profile') fetchSavedIdeas();
   }, [location.pathname]);
 
   const primaryFromLanding = () => {
@@ -241,24 +307,6 @@ export default function App() {
                   genType={genType}
                   setGenType={setGenType}
                 />
-
-                {isEvaluationVisible && evaluation && (
-                  <div className="animate-in fade-in slide-in-from-bottom-5 duration-700">
-                    <EvaluationPage
-                      isPrivate={isPrivate}
-                      setIsPrivate={setIsPrivate}
-                      evaluation={evaluation}
-                      chatMessages={
-                        chatMessages.length
-                          ? chatMessages
-                          : [{ role: 'assistant', content: "I've reviewed your evaluation. What would you like to refine?" }]
-                      }
-                      isChatTyping={isChatTyping}
-                      onDiscuss={handleSendMessage}
-                      hideHeader
-                    />
-                  </div>
-                )}
               </div>
             )
           }
@@ -319,7 +367,7 @@ export default function App() {
               chatMessages={
                 chatMessages.length
                   ? chatMessages
-                  : [{ role: 'assistant', content: "I've reviewed your evaluation. What would you like to refine for feasibility and market fit?" }]
+                  : [{ role: 'assistant', content: "### Welcome to your Idea Strategy Room! 🚀\n\nI've just finished a deep dive into your evaluation. We've got some **exciting potential** here, but also some key areas where we can sharpen the edge. 🛠️\n\nWhat would you like to brainstorm first? We could talk about **scaling your revenue**, **crushing the competition**, or **refining your target audience**. I'm ready when you are! ✨" }]
               }
               isChatTyping={isChatTyping}
               onDiscuss={handleSendMessage}
@@ -328,13 +376,33 @@ export default function App() {
         />
         <Route
           path="/history"
-          element={<HistoryPage historyList={historyList} onOpen={(item) => {
-            setEvaluation(item.analysis_results || item.evaluation || null);
-            setEvaluationId(item.id || item.evaluation_id || null);
-            navigate('/evaluation');
-          }} />}
+          element={<HistoryPage
+            historyList={historyList}
+            onOpen={(item) => {
+              setEvaluation(item.analysis_results || item.evaluation || null);
+              setEvaluationId(item.id || item.evaluation_id || null);
+              setChatMessages([]);
+              navigate('/evaluation');
+            }}
+            onDelete={deleteHistoryItem}
+            onDeleteMultiple={deleteMultipleHistoryItems}
+            onClearAll={clearAllHistory}
+          />}
         />
-        <Route path="/profile" element={<ProfilePage user={user} theme={theme} setTheme={setTheme} />} />
+        <Route path="/profile" element={
+          <ProfilePage
+            user={user}
+            theme={theme}
+            setTheme={setTheme}
+            savedIdeas={savedIdeas}
+            onDeleteIdea={handleDeleteSavedIdea}
+            onAnalyzeIdea={(idea) => {
+              setIdeaInput(idea.description || idea.title || '');
+              setLandingMode('analyze');
+              navigate('/analyze');
+            }}
+          />
+        } />
         <Route path="*" element={<Navigate to="/analyze" replace />} />
       </Routes>
     </PageShell>

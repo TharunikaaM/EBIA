@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import idea_routes, auth_routes, history_routes, chat_routes
+from routes import idea_routes, auth_routes, history_routes, chat_routes, saved_ideas_routes
 from config import settings
 
 # 1. Configure Structured Logging
@@ -55,6 +55,7 @@ app.include_router(auth_routes.router, prefix="/api/v1")
 app.include_router(idea_routes.router, prefix="/api/v1")
 app.include_router(history_routes.router, prefix="/api/v1")
 app.include_router(chat_routes.router, prefix="/api/v1")
+app.include_router(saved_ideas_routes.router, prefix="/api/v1")
 
 @app.get("/", tags=["Health"], response_model=dict)
 async def read_system_root():

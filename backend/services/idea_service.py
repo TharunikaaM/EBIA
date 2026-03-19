@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 
 from sqlalchemy.orm import Session
 
-from database import EvaluationHistory
+from database import EvaluationHistory, SessionLocal
 from schemas.idea_request import IdeaRequest, IdeaGenerateRequest
 from schemas.idea_response import (
     IdeaResponse, 
@@ -39,84 +39,99 @@ class IdeaService:
         db: Session = None, 
         task_id: str = None
     ) -> IdeaResponse:
-        """
-        Executes the full RAG-based evaluation pipeline for a startup idea.
-        Includes safety checks, retrieval, pattern mining, and LLM-driven insights.
-        """
+        # Use a fresh session if none provided (crucial for background tasks)
+        internal_db = db if db is not None else SessionLocal()
+        
         def update_task_status(status_label: str, results: Dict = None, error_msg: str = None):
             """Updates the background task status in PostgreSQL."""
-            if db and task_id:
-                entry = db.query(EvaluationHistory).filter(EvaluationHistory.task_id == task_id).first()
-                if entry:
-                    if status_label == "COMPLETED":
-                        entry.status = "COMPLETED"
-                        entry.analysis_results = results
-                    elif status_label == "FAILED":
-                        entry.status = "FAILED"
-                        entry.error_message = error_msg
-                    else:
-                        entry.status = status_label
-                    db.commit()
+            if task_id:
+                try:
+                    entry = internal_db.query(EvaluationHistory).filter(EvaluationHistory.task_id == task_id).first()
+                    if entry:
+                        if status_label == "COMPLETED":
+                            entry.status = "COMPLETED"
+                            entry.analysis_results = results
+                        elif status_label == "FAILED":
+                            entry.status = "FAILED"
+                            entry.error_message = error_msg
+                        else:
+                            entry.status = status_label
+                        internal_db.commit()
+                except Exception as e:
+                    logger.error(f"Failed to update task status: {e}")
 
-        raw_idea_text = request.idea
-        cleaned_idea_text = clean_text(raw_idea_text)
-        
-        # 1. Ethical Safety Check (Input Validation)
-        update_task_status("Performing Ethical Safety Check")
-        
-        user_email = None
-        if db and task_id:
-            entry = db.query(EvaluationHistory).filter(EvaluationHistory.task_id == task_id).first()
-            if entry:
-                user_email = entry.user_email
-                
-        safety_audit = audit_content_for_ethical_integrity(raw_idea_text, db=db, user_email=user_email)
-        
-        if safety_audit["is_refusal"]:
-            update_task_status("FAILED", error_msg=safety_audit["educational_reason"])
-            return self._generate_refusal_response(raw_idea_text, safety_audit)
-
-        ethical_flags = safety_audit.get("flags", [])
-        
-        # 2. Market Evidence Retrieval (Public Data Only)
-        update_task_status("Retrieving Market Evidence")
-        market_evidence = self.retrieval_service.retrieve_market_evidence(cleaned_idea_text, top_k=3)
-        
-        # Prepare context and evidence mapping
-        evidence_context = ""
-        structured_evidence = []
-        for i, doc in enumerate(market_evidence):
-            source_id = i + 1
-            doc_title = doc.get("title") or doc.get("domain") or "Untitled"
-            doc_content = doc.get("content") or ""
-            evidence_context += f"\n[Source {source_id}]: {doc_title}\n{doc_content}\n"
-            
-            # Map distance to confidence (0.0 - 1.0)
-            distance = doc.get("_distance", 1.0)
-            confidence = max(0.0, min(1.0, 1.0 - (distance / 1.5))) 
-            
-            structured_evidence.append({
-                "source_id": f"Source {source_id}",
-                "source_title": doc_title,
-                "content": doc_content[:200] + "...",
-                "confidence_score": round(confidence, 2)
-            })
-
-        # 3. Topic & Pattern Mining
-        update_task_status("Analyzing Market Patterns")
-        market_patterns = mine_market_patterns_and_topics(raw_idea_text, contextual_documents=market_evidence)
-        
-        # 4. LLM Synthesis & Analysis
-        update_task_status("Synthesizing Strategic Insights")
-        analysis_prompt = self._build_analysis_prompt(raw_idea_text, evidence_context)
-        
         try:
+            raw_idea_text = request.idea
+            cleaned_idea_text = clean_text(raw_idea_text)
+            
+            # 1. Ethical Safety Check (Input Validation)
+            update_task_status("Performing Ethical Safety Check")
+            
+            user_email = None
+            if task_id:
+                entry = internal_db.query(EvaluationHistory).filter(EvaluationHistory.task_id == task_id).first()
+                if entry:
+                    user_email = entry.user_email
+                    
+            safety_audit = audit_content_for_ethical_integrity(raw_idea_text, db=internal_db, user_email=user_email)
+            
+            if safety_audit["is_refusal"]:
+                update_task_status("FAILED", error_msg=safety_audit["educational_reason"])
+                return self._generate_refusal_response(raw_idea_text, safety_audit)
+
+            ethical_flags = safety_audit.get("flags", [])
+            
+            # 2. Market Evidence Retrieval (Public Data Only)
+            update_task_status("Retrieving Market Evidence")
+            market_evidence = self.retrieval_service.retrieve_market_evidence(cleaned_idea_text, top_k=3)
+            
+            # Prepare context and evidence mapping
+            evidence_context = ""
+            structured_evidence = []
+            for i, doc in enumerate(market_evidence):
+                source_id = i + 1
+                doc_title = doc.get("title") or doc.get("domain") or "Untitled"
+                doc_content = doc.get("content") or ""
+                evidence_context += f"\n[Source {source_id}]: {doc_title}\n{doc_content}\n"
+                
+                # Map distance to confidence (0.0 - 1.0)
+                distance = doc.get("_distance", 1.0)
+                confidence = max(0.0, min(1.0, 1.0 - (distance / 1.5))) 
+                
+                structured_evidence.append({
+                    "source_id": f"Source {source_id}",
+                    "source_title": doc_title,
+                    "content": doc_content[:200] + "...",
+                    "confidence_score": round(confidence, 2)
+                })
+
+            # 3. Topic & Pattern Mining
+            update_task_status("Analyzing Market Patterns")
+            market_patterns = mine_market_patterns_and_topics(raw_idea_text, contextual_documents=market_evidence)
+            
+            # 4. LLM Synthesis & Analysis
+            update_task_status("Synthesizing Strategic Insights")
+            analysis_prompt = self._build_analysis_prompt(
+                raw_idea_text, 
+                evidence_context,
+                domain=request.domain,
+                location=request.location,
+                budget=request.budget
+            )
+            
             llm_raw_response = LLMService.generate(analysis_prompt, json_format=True)
             llm_data = json.loads(llm_raw_response.replace('```json', '').replace('```', '').strip())
             
             # 5. Deterministic Feasibility Scoring
             scoring_result = calculate_idea_feasibility_score(raw_idea_text, market_evidence)
             
+            # 6. Hybrid Intelligence Scoring (LLM Context + Deterministic Proof)
+            llm_potential = int(llm_data.get("market_potential", 80))
+            deterministic_score = scoring_result["score"]
+            
+            # 60% Weight to LLM context, 40% to deterministic market distance/risk logic
+            hybrid_score = int((llm_potential * 0.6) + (deterministic_score * 0.4))
+
             # Map LLM result to Response Schema
             response = IdeaResponse(
                 original_idea=raw_idea_text,
@@ -126,7 +141,7 @@ class IdeaService:
                     target_users=llm_data.get("target_users", "Broad Market"),
                     core_problem=llm_data.get("core_problem", "Unmet Need")
                 ),
-                feasibility_score=scoring_result["score"],
+                feasibility_score=hybrid_score,
                 feasibility_reasoning=scoring_result["reasoning"],
                 competitor_overview=[CompetitorOverview(**c) for c in llm_data.get("competitors", [])],
                 user_pain_points=list(set(llm_data.get("pain_points", []) + market_patterns.get("user_pain_points", []))),
@@ -141,7 +156,7 @@ class IdeaService:
 
             # Final Output Safety Check
             advice_blob = f"{response.refined_idea} {' '.join(response.improvement_steps)}"
-            output_safety = audit_content_for_ethical_integrity(advice_blob, is_generated_advice=True, db=db, user_email=user_email)
+            output_safety = audit_content_for_ethical_integrity(advice_blob, is_generated_advice=True, db=internal_db, user_email=user_email)
             if not output_safety["is_safe"]:
                 response.ethical_flags = list(set(response.ethical_flags + output_safety["flags"]))
                 if output_safety.get("correction_path"):
@@ -153,7 +168,9 @@ class IdeaService:
         except Exception as e:
             logger.error(f"Critical Failure in Evaluation Pipeline: {e}")
             update_task_status("FAILED", error_msg=str(e))
-            raise e
+        finally:
+            if db is None: # We created our own session, so we close it
+                internal_db.close()
 
     def propose_new_concept(self, request: IdeaGenerateRequest) -> IdeaGenerateResponse:
         """
@@ -199,6 +216,6 @@ class IdeaService:
             status="refusal"
         )
 
-    def _build_analysis_prompt(self, idea: str, evidence: str) -> str:
+    def _build_analysis_prompt(self, idea: str, evidence: str, domain: str = None, location: str = None, budget: str = None) -> str:
         """Constructs the master synthesis prompt for the LLM."""
-        return PromptConfig.get_analysis_prompt(idea, evidence)
+        return PromptConfig.get_analysis_prompt(idea, evidence, domain=domain, location=location, budget=budget)

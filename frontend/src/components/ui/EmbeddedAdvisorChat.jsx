@@ -3,6 +3,7 @@ import { MessageSquare, Sparkles, Users } from 'lucide-react';
 import BaseCard from './BaseCard';
 import BaseButton from './BaseButton';
 import { cn } from '../../lib/cn';
+import ReactMarkdown from 'react-markdown';
 
 export default function EmbeddedAdvisorChat({ messages, onSend, isTyping, isVisible, onClose }) {
   const [draft, setDraft] = useState('');
@@ -40,12 +41,22 @@ export default function EmbeddedAdvisorChat({ messages, onSend, isTyping, isVisi
                 {m.role === 'assistant' ? <Sparkles className="h-5 w-5" /> : <Users className="h-5 w-5" />}
               </div>
               <div className={cn(
-                "flex-1 p-5 rounded-2xl text-sm leading-relaxed shadow-sm border",
-                m.role === 'assistant' 
-                  ? "bg-blue-600 text-white border-blue-500" 
+                "flex-1 p-5 rounded-2xl text-sm leading-relaxed shadow-sm border prose prose-sm dark:prose-invert max-w-none",
+                m.role === 'assistant'
+                  ? "bg-blue-600 text-white border-blue-500"
                   : "bg-white dark:bg-slate-800 text-[var(--text-main)] border-[var(--border-color)]"
               )}>
-                {m.content}
+                <ReactMarkdown
+                  components={{
+                    h3: ({ node, ...props }) => <h3 className="text-base font-black mb-2 mt-4 first:mt-0" {...props} />,
+                    p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-3 space-y-1" {...props} />,
+                    li: ({ node, ...props }) => <li className="marker:text-blue-200" {...props} />,
+                    strong: ({ node, ...props }) => <strong className="font-black text-white underline decoration-blue-400/50" {...props} />
+                  }}
+                >
+                  {m.content}
+                </ReactMarkdown>
               </div>
             </div>
           ))}

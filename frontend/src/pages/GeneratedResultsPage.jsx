@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sprout, Truck, Users, ArrowLeft, Shield, ShieldOff, Sparkles, Lightbulb } from 'lucide-react';
+import { Sprout, Truck, Users, ArrowLeft, Shield, ShieldOff, Sparkles, Lightbulb, X, ChevronRight, ChevronLeft, Target, Wallet, Zap, Bookmark } from 'lucide-react';
 import BaseCard from '../components/ui/BaseCard';
 import BaseInput from '../components/ui/BaseInput';
 import BaseButton from '../components/ui/BaseButton';
@@ -13,14 +14,27 @@ export default function GeneratedResultsPage({
   setFounderConstraints,
   workspaceQuery,
   setWorkspaceQuery,
-  ideas,
+  ideas = [],
   onAnalyzeIdea,
   onRefineIdeas,
+  onSaveIdea,
   onRegenerate,
-  isPrivate,
-  setIsPrivate,
 }) {
   const navigate = useNavigate();
+  const [selectedIndex, setSelectedIndex] = useState(null);
+
+  const nextIdea = () => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((selectedIndex + 1) % Math.min(ideas.length, 3));
+  };
+
+  const prevIdea = () => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((selectedIndex - 1 + Math.min(ideas.length, 3)) % Math.min(ideas.length, 3));
+  };
+
+  const currentIdea = selectedIndex !== null ? ideas[selectedIndex] : null;
+
 
   return (
     <div className="mx-auto max-w-[1440px] px-6 py-6 animate-in fade-in duration-500">
@@ -36,64 +50,9 @@ export default function GeneratedResultsPage({
           <h1 className="text-2xl font-black tracking-tight text-[var(--text-main)] uppercase tracking-[0.1em]">Strategic Directions</h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsPrivate?.(!isPrivate)}
-            className={cn(
-              "flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all font-bold text-sm shadow-sm",
-              isPrivate
-                ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                : "bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-blue-500"
-            )}
-          >
-            {isPrivate ? (
-              <>
-                <Shield className="h-4 w-4" />
-                <span>Private Mode ON</span>
-              </>
-            ) : (
-              <>
-                <ShieldOff className="h-4 w-4" />
-                <span>Private Mode OFF</span>
-              </>
-            )}
-          </button>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_1fr]">
-        <div className="space-y-6">
-          <BaseCard className="p-8 bg-[var(--bg-card)] border-[var(--border-color)]">
-            <h3 className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.2em] mb-8 pb-4 border-b border-[var(--border-color)]">Founder Constraints</h3>
-            <div className="space-y-6">
-              <div className="transition-all hover:translate-x-1">
-                <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Industry Domain</div>
-                <div className="text-sm font-black text-blue-600 dark:text-blue-400">{founderConstraints.domain}</div>
-              </div>
-              <div className="transition-all hover:translate-x-1">
-                <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Target Location</div>
-                <div className="text-sm font-black text-[var(--text-main)]">{founderConstraints.location}</div>
-              </div>
-              <div className="transition-all hover:translate-x-1">
-                <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Budget Depth</div>
-                <div className="text-sm font-black text-[var(--text-main)]">{founderConstraints.budget}</div>
-              </div>
-            </div>
-          </BaseCard>
-
-          <BaseCard className="p-8 bg-blue-600 border-none text-white shadow-xl shadow-blue-500/20">
-            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6 backdrop-blur-md">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <h3 className="text-lg font-black mb-4">Refine Parameters</h3>
-            <p className="text-blue-100 text-xs font-bold mb-8 leading-relaxed opacity-90">
-              Need a pivot or more specific focus? Adjust your constraints to find a precisely tailored market opportunity.
-            </p>
-            <BaseButton variant="secondary" className="w-full h-14 bg-white !text-blue-600 font-black rounded-2xl shadow-lg border-none uppercase tracking-widest text-[10px]" onClick={onRefineIdeas}>
-              Refine Search
-            </BaseButton>
-          </BaseCard>
-        </div>
+      <div className="grid grid-cols-1 gap-8">
 
         <div className="space-y-8">
           <BaseCard className="p-10 border-none shadow-2xl bg-[var(--bg-card)] relative overflow-hidden">
@@ -117,17 +76,21 @@ export default function GeneratedResultsPage({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
                 {(ideas || []).slice(0, 3).map((idea, idx) => (
-                  <IdeaCard
-                    key={idea.id || idea.title || idx}
-                    icon={iconByIndex[idx] || Sprout}
-                    title={idea.title}
-                    marketFit={idea.score || idea.market_fit}
-                    bullets={idea.features || []}
-                    mvpBudget={idea.budget || idea.mvp_budget}
-                    targetAudience={idea.target_audience}
-                    revenueModel={idea.revenue_model}
-                    onAnalyze={() => onAnalyzeIdea(idea)}
-                  />
+                  <div key={idea.id || idea.title || idx} onClick={() => setSelectedIndex(idx)} className="cursor-pointer">
+                    <IdeaCard
+                      icon={iconByIndex[idx] || Sprout}
+                      title={idea.title}
+                      marketFit={idea.score || idea.market_fit}
+                      bullets={idea.features || []}
+                      mvpBudget={idea.budget || idea.mvp_budget}
+                      targetAudience={idea.target_audience}
+                      revenueModel={idea.revenue_model}
+                      onAnalyze={(e) => {
+                        e.stopPropagation();
+                        onAnalyzeIdea(idea);
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
 
@@ -148,6 +111,121 @@ export default function GeneratedResultsPage({
           </BaseCard>
         </div>
       </div>
+
+      {/* Idea Detail Modal */}
+      {currentIdea && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative w-full max-w-4xl bg-[var(--bg-card)] rounded-[2.5rem] shadow-2xl border border-[var(--border-color)] overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
+            <button
+              onClick={() => setSelectedIndex(null)}
+              className="absolute top-6 right-6 p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-colors z-20"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+              {/* Left Bar - Navigation & Info */}
+              <div className="w-full md:w-80 bg-slate-50 dark:bg-slate-900/50 p-10 border-r border-[var(--border-color)] flex flex-col justify-between">
+                <div>
+                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 mb-8">
+                    <Sparkles className="h-7 w-7" />
+                  </div>
+                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Direction {selectedIndex + 1} of 3</h3>
+                  <h2 className="text-2xl font-black text-[var(--text-main)] leading-tight mb-6">{currentIdea.title}</h2>
+
+                  <div className="space-y-6 pt-6 border-t border-[var(--border-color)]">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                        <Zap className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Market Fit</div>
+                        <div className="text-sm font-black text-emerald-600">{currentIdea.market_fit || currentIdea.score}% Score</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
+                        <Wallet className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Est. Budget</div>
+                        <div className="text-sm font-black text-[var(--text-main)]">{currentIdea.mvp_budget || currentIdea.budget}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-10">
+                  <button onClick={prevIdea} className="flex-1 h-12 rounded-xl border border-[var(--border-color)] flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button onClick={nextIdea} className="flex-1 h-12 rounded-xl border border-[var(--border-color)] flex items-center justify-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Side - Detailed Content */}
+              <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
+                <div className="max-w-xl">
+                  <div className="mb-10">
+                    <h4 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-500" />
+                      Concept Explanation
+                    </h4>
+                    <p className="text-lg font-bold text-[var(--text-main)] leading-relaxed">
+                      {currentIdea.description || "A strategic business model designed to leverage existing market efficiencies in your chosen domain and location."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    <div>
+                      <h5 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 opacity-60">Target Audience</h5>
+                      <p className="text-sm font-bold text-[var(--text-main)]">{currentIdea.target_audience}</p>
+                    </div>
+                    <div>
+                      <h5 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 opacity-60">Revenue Model</h5>
+                      <p className="text-sm font-bold text-blue-600">{currentIdea.revenue_model}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-10">
+                    <h5 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 opacity-60">Key Structural Features</h5>
+                    <div className="grid grid-cols-1 gap-3">
+                      {(currentIdea.features || currentIdea.bullets || []).map((f, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+                          <div className="h-2 w-2 rounded-full bg-blue-600" />
+                          <span className="text-xs font-black text-[var(--text-main)]">{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <BaseButton
+                      onClick={() => onAnalyzeIdea(currentIdea)}
+                      className="flex-1 h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
+                    >
+                      Start Analysis
+                    </BaseButton>
+                    <BaseButton
+                      variant="secondary"
+                      onClick={() => {
+                        onSaveIdea?.(currentIdea);
+                        setSelectedIndex(null);
+                      }}
+                      className="flex-1 h-14 rounded-2xl border-2 border-slate-100 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2"
+                    >
+                      <Bookmark className="h-4 w-4 text-blue-600" />
+                      Save for Later
+                    </BaseButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import BaseCard from './BaseCard';
 import BaseButton from './BaseButton';
+import { cn } from '../../lib/cn';
 
 export default function IdeaCard({
   icon: Icon,
@@ -24,7 +25,14 @@ export default function IdeaCard({
             <div className="text-base font-black text-[var(--text-main)] leading-snug">
               {title}
             </div>
-            <div className="mt-2 inline-flex items-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-tighter">
+            <div className={cn(
+              "mt-2 inline-flex items-center rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-tighter transition-colors",
+              marketFit >= 80
+                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                : marketFit >= 60
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                  : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+            )}>
               {marketFit}% <span className="ml-1 opacity-70">Market Fit</span>
             </div>
           </div>

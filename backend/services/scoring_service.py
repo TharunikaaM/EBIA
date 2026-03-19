@@ -41,13 +41,20 @@ def calculate_idea_feasibility_score(idea_text: str, similar_documents: List[Dic
     execution_risk_score = max(10, 90 - (risk_hits * 10))
     
     # Weighted Final Score Initialization
-    validation_weight = 0.3
-    innovation_weight = 0.3
+    validation_weight = 0.4
+    innovation_weight = 0.2
     risk_weight = 0.4
     
-    final_score = (market_val_score * validation_weight) + \
-                  (novelty_score * innovation_weight) + \
-                  (execution_risk_score * risk_weight)
+    # Base score from deterministic metrics
+    base_score = (market_val_score * validation_weight) + \
+                 (novelty_score * innovation_weight) + \
+                 (execution_risk_score * risk_weight)
+    
+    # Add a slight "complexity" bonus for detailed ideas
+    # 50-200 chars is the sweet spot for a good core idea
+    complexity_bonus = min(5, len(idea_text) / 40)
+    
+    final_score = base_score + complexity_bonus
     
     # Generate Reasoning Narrative
     reasoning_parts = []

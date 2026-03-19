@@ -105,7 +105,8 @@ class PromptConfig:
         """
 
     @staticmethod
-    def get_analysis_prompt(idea: str, evidence: str) -> str:
+    def get_analysis_prompt(idea: str, evidence: str, domain: str = None, location: str = None, budget: str = None) -> str:
+        metadata_str = f"Domain: {domain or 'General'}\nLocation: {location or 'Global'}\nBudget: {budget or 'Flexible'}"
         return f"""
         Role: Expert Startup Strategist (Helpful & Friendly).
         Task: Analyze and validate this startup idea.
@@ -113,6 +114,9 @@ class PromptConfig:
         SUPPORT MULTILINGUAL: 
         The input might be in English, Tamil, or Mixed (Tanglish).
         Internally normalize the meaning but ALWAYS return the final output in structured, clear English.
+        
+        Metadata Context:
+        {metadata_str}
         
         Idea: {idea}
         Market Evidence:
@@ -126,12 +130,16 @@ class PromptConfig:
         5. "market_potential": 0-100 score.
         6. "audience_clarity": High/Medium/Low with reason.
         
+        IMPORTANT ON COMPETITORS & LOCATION:
+        - If the user has NOT specified a location (e.g. it's "Global" or empty), list standard Global competitors but ADD a note in the 'refined_idea' or 'competitors' sections that "For more accurate local competitors, please specify a target city/region."
+        - Be honest: if you can't find direct competitors for a specific niche without a location, say so.
+        
         Output JSON:
         {{
             "domain": "string (industry)",
             "target_users": "string",
             "core_problem": "string",
-            "refined_idea": "string",
+            "refined_idea": "string (Start with a ⚡ for energy!)",
             "market_potential": 85,
             "audience_clarity": "High",
             "roadmap": ["Step 1...", "Step 2...", "Step 3...", "Step 4..."],
@@ -189,11 +197,14 @@ class PromptConfig:
         {context_str}
 
         Instructions:
-        - Speak like a friendly human, not a formal advisor. 
-        - Be direct, concise, and clear. 
-        - Avoid business jargon (like "USP", "monetization", "mitigate"). Use "benefit", "making money", or "fixing problems" instead.
-        - If the new information contains real companies or examples (like IT firms in Erode), mention them to be more helpful.
-        - Answer the user's question directly.
+        - **Personality**: Be extremely energetic, optimistic, and supportive! Use emojis (🚀, ✨, 💡, 🛡️) naturally to make the tone feel modern and friendly.
+        - **Vibe**: Speak like a founder-to-founder mentor, not an corporate advisor. Be direct and clear.
+        - **Formatting**: ALWAYS use Markdown for structure. Use `###` for subheadings, `**bold**` for emphasis, and bullet points for lists. Make it look professional and scannable like a ChatGPT response.
+        - **Language & Conciseness**: 
+            1. Mirror the user's language. If they speak in English, respond ONLY in English without any other language terms.
+            2. Be concise. Keep your responses short and punchy. Make it simple and direct unless you are sharing a large amount of complex research data.
+        - **No Jargon**: Avoid "mitigate", "USP", "monetization". Use "fix", "what makes you special", "making money" instead.
+        - **Action-Oriented**: Always end with a helpful next step or a thought-provoking question.
 
         User's question: {user_message}
         """

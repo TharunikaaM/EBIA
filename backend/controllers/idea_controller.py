@@ -38,8 +38,8 @@ class IdeaController:
         db.add(new_entry)
         db.commit()
 
-        # Add background task using the decentralized pipeline orchestration
-        background_tasks.add_task(self.service.execute_startup_evaluation_pipeline, request, db, task_id)
+        # Add background task using a fresh session (None triggers SessionLocal in service)
+        background_tasks.add_task(self.service.execute_startup_evaluation_pipeline, request, None, task_id)
         
         return AsyncEvaluationResponse(
             task_id=task_id,

@@ -8,6 +8,7 @@ from schemas.history_update import HistoryUpdateRequest
 from controllers.chat_controller import ChatController
 from services.export_service import ExportService
 import logging
+from typing import List
 
 router = APIRouter(prefix="/history", tags=["History"])
 logger = logging.getLogger(__name__)
@@ -81,6 +82,32 @@ def delete_history_entry(
     db.delete(entry)
     db.commit()
     return {"message": "Deleted successfully"}
+
+@router.delete("/")
+def clear_user_history(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Deletes ALL history for the logged-in user."""
+    db.query(EvaluationHistory).filter(
+        EvaluationHistory.user_email == current_user["email"]
+    ).delete()
+    db.commit()
+    return {"message": "History cleared successfully"}
+
+@router.post("/delete-multiple")
+def delete_multiple_entries(
+    ids: List[int],
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Deletes multiple evaluation entries."""
+    db.query(EvaluationHistory).filter(
+        EvaluationHistory.id.in_(ids),
+        EvaluationHistory.user_email == current_user["email"]
+    ).delete(synchronize_session=False)
+    db.commit()
+    return {"message": f"Deleted {len(ids)} entries successfully"}
 
 @router.get("/{evaluation_id}/export")
 def export_evaluation(

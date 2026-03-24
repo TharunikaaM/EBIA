@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ArrowLeft, Clock, Search, Trash2, CheckCircle2 } from 'lucide-react';
 import BaseCard from '../components/ui/BaseCard';
 import BaseButton from '../components/ui/BaseButton';
+import Tooltip from '../components/ui/Tooltip';
 
 function ScorePill({ score }) {
   const s = Number(score) || 0;
@@ -55,28 +56,32 @@ export default function HistoryPage({ historyList = [], onOpen, onDelete, onDele
           <div className="p-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20">
             <Clock className="h-6 w-6" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-main)]">Evaluation History</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-main)]">Your Ideas</h1>
         </div>
         <div className="flex items-center gap-3">
           {selectedIds.length > 0 ? (
-            <BaseButton
-              onClick={handleDeleteSelected}
-              className="rounded-xl flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white border-none"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete Selected ({selectedIds.length})
-            </BaseButton>
+            <Tooltip text="Permanently delete selected history items" position="bottom">
+              <BaseButton
+                onClick={handleDeleteSelected}
+                className="rounded-xl flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white border-none w-full"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedIds.length})
+              </BaseButton>
+            </Tooltip>
           ) : (
             <>
               {historyList.length > 0 && (
-                <BaseButton
-                  variant="secondary"
-                  className="rounded-xl flex items-center gap-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-100 dark:border-rose-900/30 dark:hover:bg-rose-900/20"
-                  onClick={() => onClearAll?.()}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear All
-                </BaseButton>
+                <Tooltip text="Wipe your entire evaluation history" position="bottom">
+                  <BaseButton
+                    variant="secondary"
+                    className="rounded-xl flex items-center gap-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-100 dark:border-rose-900/30 dark:hover:bg-rose-900/20 w-full"
+                    onClick={() => onClearAll?.()}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete All Ideas
+                  </BaseButton>
+                </Tooltip>
               )}
             </>
           )}
@@ -98,9 +103,9 @@ export default function HistoryPage({ historyList = [], onOpen, onDelete, onDele
                     />
                   </div>
                 </th>
-                <th className="px-8 py-5">Project / Idea</th>
-                <th className="px-8 py-5">Analysis Date</th>
-                <th className="px-8 py-5 text-right font-bold pr-12">Feasibility</th>
+                <th className="px-8 py-5">Idea</th>
+                <th className="px-8 py-5">Checked on</th>
+                <th className="px-8 py-5 text-right font-bold pr-12">Success Score</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-color)] text-[var(--text-main)] font-medium">
@@ -111,8 +116,8 @@ export default function HistoryPage({ historyList = [], onOpen, onDelete, onDele
                       <div className="p-4 rounded-full bg-[var(--bg-subtle)]">
                         <Search className="h-8 w-8 opacity-20" />
                       </div>
-                      <p className="font-bold">No history yet. Start by analyzing an idea!</p>
-                      <BaseButton onClick={() => navigate('/analyze')} className="rounded-xl">Go Home</BaseButton>
+                      <p className="font-bold">No ideas saved yet. Start by checking an idea!</p>
+                      <BaseButton onClick={() => navigate('/analyze')} className="rounded-xl">Check an Idea</BaseButton>
                     </div>
                   </td>
                 </tr>

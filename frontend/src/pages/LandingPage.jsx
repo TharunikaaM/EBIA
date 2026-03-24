@@ -23,19 +23,18 @@ export default function LandingPage({
   setGenStep,
   genType,
   setGenType,
-  isAppraising,
 }) {
-  const isAnalyzeDisabled = mode === 'analyze' && ideaInput.trim().length < 10;
+  const isAnalyzeDisabled = mode === 'analyze' && ideaInput.trim().length < 100;
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-4 md:py-6">
       <div className="text-center mb-8">
         <h1 className="text-2xl md:text-4xl font-black tracking-tight text-[var(--text-main)] mb-4">
-          Analyze & Generate <br />
-          <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">Startup Ideas</span>
+          Turn Your Idea Into a <br />
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">Business Plan</span>
         </h1>
         <p className="text-sm md:text-base text-[var(--text-muted)] max-w-2xl mx-auto font-medium leading-relaxed opacity-90">
-          Validate your concepts with evidence-backed intelligence or discover your next big venture in seconds.
+          Get instant feedback and discover better ideas in seconds.
         </p>
       </div>
 
@@ -67,7 +66,7 @@ export default function LandingPage({
             )}
           >
             <Lightbulb className="h-4 w-4" />
-            Get Startup Ideas
+            Give Me Ideas
           </button>
         </div>
 
@@ -80,7 +79,7 @@ export default function LandingPage({
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <label className="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-widest">
-                    Describe Your Concept
+                    Explain your idea in simple words
                   </label>
                 </div>
 
@@ -102,9 +101,36 @@ export default function LandingPage({
                 <textarea
                   value={ideaInput}
                   onChange={(e) => setIdeaInput(e.target.value)}
-                  placeholder="Describe your startup idea here..."
+                  placeholder="Explain your idea in simple words (what, who, and how)"
                   className="w-full resize-none rounded-xl bg-[var(--bg-main)] p-5 text-sm md:text-base font-medium text-[var(--text-main)] placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-[var(--border-color)] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-h-40 transition-all duration-300"
                 />
+
+                {/* Input Strength Meter */}
+                {(() => {
+                  const len = ideaInput.length;
+                  const pct = Math.min(100, (len / 300) * 100);
+                  const color = len === 0 ? 'bg-slate-200 dark:bg-slate-700' : len < 100 ? 'bg-red-500' : len <= 300 ? 'bg-emerald-500' : 'bg-amber-500';
+                  const textColor = len === 0 ? 'text-slate-400' : len < 100 ? 'text-red-500' : len <= 300 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400';
+                  const label = len < 100 ? 'Explain a bit more (minimum 100 characters)' : len < 150 ? 'Almost there (150+ is perfect)' : len <= 300 ? 'Perfect length!' : 'Try to keep it short and clear';
+                  return (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all duration-300", color)} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", textColor)}>
+                          {len > 0 ? label : 'Explain your idea…'}
+                        </span>
+                        <span className={cn("text-[10px] font-bold tabular-nums", textColor)}>
+                          {len} / 200
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[var(--text-muted)] font-medium opacity-70">
+                        Best results when you write a detailed 2–3 sentences describing your idea.
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -112,8 +138,8 @@ export default function LandingPage({
               {genStep === 1 ? (
                 <div className="text-center space-y-5 animate-in fade-in zoom-in-95 duration-500">
                   <div className="space-y-1">
-                    <h3 className="text-lg md:text-xl font-black text-[var(--text-main)]">What type of idea are you looking for?</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium">Select a path for more accurate market intelligence.</p>
+                    <h3 className="text-lg md:text-xl font-black text-[var(--text-main)]">What type of business do you want to start?</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium">Select an option to get better suggestions.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto">
@@ -124,8 +150,8 @@ export default function LandingPage({
                       <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Globe className="h-4 w-4" />
                       </div>
-                      <div className="font-bold text-base text-[var(--text-main)] tracking-tight">SaaS / Digital</div>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">Software platforms, mobile apps, or digital services built for global scale.</p>
+                      <div className="font-bold text-base text-[var(--text-main)] tracking-tight">Online / App-based Idea</div>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">Software, mobile apps, or websites you can use anywhere.</p>
                     </button>
 
                     <button
@@ -135,8 +161,8 @@ export default function LandingPage({
                       <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <BriefcaseBusiness className="h-4 w-4" />
                       </div>
-                      <div className="font-bold text-base text-[var(--text-main)] tracking-tight">Non-SaaS / Local</div>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">Physical businesses, local services, or brick-and-mortar concepts.</p>
+                      <div className="font-bold text-base text-[var(--text-main)] tracking-tight">Local / Physical Business</div>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">Shops, local services, or physical products in a specific place.</p>
                     </button>
                   </div>
                 </div>
@@ -223,7 +249,7 @@ export default function LandingPage({
                     : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
                 )}
               >
-                {mode === 'analyze' ? "Analyze My Idea" : "Get Startup Ideas"}
+                {mode === 'analyze' ? "Analyze My Idea" : "Give Me Ideas"}
               </BaseButton>
             </div>
           )}

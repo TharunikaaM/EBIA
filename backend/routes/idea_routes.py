@@ -43,7 +43,7 @@ def check_appraisal_status(
     summary="Synthesize Novel Concept",
     description="Generates a new business idea based on specified parameters and executes the full evaluation pipeline."
 )
-def synthesis_new_concept(
+def synthesize_new_concept(
     request: IdeaGenerateRequest, 
     current_user: dict = Depends(get_current_user)
 ):

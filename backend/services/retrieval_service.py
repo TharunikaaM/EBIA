@@ -22,12 +22,20 @@ class RetrievalService:
             vectors = self.embedding_model.encode(texts)
             self.repository.index.add(vectors)
 
-    def retrieve_market_evidence(self, query_text: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    def retrieve_market_evidence(self, query_text: str, domain: str = None, location: str = None, top_k: int = 3) -> List[Dict[str, Any]]:
         """
-        Retrieves high-performance similarity search results from public documents only.
+        Retrieves context-specific market evidence using FAISS.
+        Enhances the query with domain and location for better grounding.
         """
         start_time = time.time()
-        cleaned_text = clean_text(query_text)
+        
+        # Build enriched query
+        enrichments = []
+        if domain: enrichments.append(f"in the {domain} industry")
+        if location: enrichments.append(f"located in {location}")
+        
+        enriched_query = f"{query_text} {' '.join(enrichments)}".strip()
+        cleaned_text = clean_text(enriched_query)
         
         # Encode and search
         query_vector = self.embedding_model.encode([cleaned_text])[0]
@@ -36,5 +44,5 @@ class RetrievalService:
         duration_ms = (time.time() - start_time) * 1000
         distances = [doc.get("_distance", 0) for doc in results]
         
-        logger.info(f"Retrieval Service: ExecutionTime={duration_ms:.2f}ms, MatchDistances={distances}")
+        logger.info(f"Retrieval Service: Query='{enriched_query[:50]}...', Time={duration_ms:.2f}ms, Distances={distances}")
         return results

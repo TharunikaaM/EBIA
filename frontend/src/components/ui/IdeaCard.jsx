@@ -3,91 +3,89 @@ import BaseButton from './BaseButton';
 import { cn } from '../../lib/cn';
 import { Bookmark } from 'lucide-react';
 
-export default function IdeaCard({
-  icon: Icon,
-  title,
-  marketFit,
-  bullets = [],
-  mvpBudget,
-  targetAudience,
-  revenueModel,
-  onAnalyze,
-  isSaved = false,
+export default function IdeaCard({ 
+  icon: Icon, 
+  title, 
+  marketFit, 
+  bullets = [], 
+  mvpBudget, 
+  targetAudience, 
+  revenueModel, 
+  isSaved = false, 
+  onAnalyze, 
+  onSave 
 }) {
   return (
     <BaseCard className={cn(
-      "group p-6 flex flex-col h-full shadow-lg border-[var(--border-color)] transition-all hover:scale-[1.02] bg-[var(--bg-card)] relative overflow-hidden",
-      isSaved && "border-blue-500/50 ring-1 ring-blue-500/20 shadow-blue-500/5"
+      "flex flex-col h-full group p-8 hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-500 bg-[var(--bg-card)] border-[var(--border-color)] relative overflow-hidden",
+      isSaved && "ring-2 ring-blue-500/20 border-blue-500/30"
     )}>
-      {isSaved && (
-        <div className="absolute top-0 right-0 p-4">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-bl-2xl bg-blue-600 text-white shadow-lg animate-in slide-in-from-top-4 duration-300">
-            <Bookmark className="h-3 w-3 fill-current" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Selected</span>
-          </div>
+      <div className="flex items-start justify-between mb-8">
+        <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+          {Icon && <Icon className="h-7 w-7" />}
         </div>
-      )}
-      <div className="flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {Icon ? (
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 transition-transform group-hover:scale-110">
-                <Icon className="h-5 w-5" />
-              </div>
-            ) : null}
-            <div className="text-base font-black text-[var(--text-main)] leading-snug">
-              {title}
-            </div>
-            <div className={cn(
-              "mt-2 inline-flex items-center rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-tighter transition-colors",
-              marketFit >= 80
-                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
-                : marketFit >= 60
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                  : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-            )}>
-              {marketFit}% <span className="ml-1 opacity-70">Market Fit</span>
-            </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className={cn(
+            "h-10 w-24 rounded-xl flex items-center justify-center font-black text-xs transition-colors",
+            marketFit >= 80 
+              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600" 
+              : "bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+          )}>
+            {marketFit}% FIT
           </div>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div>
-            <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Who is it for?</div>
-            <p className="text-xs font-bold text-[var(--text-main)] leading-relaxed">{targetAudience || 'Broad Market'}</p>
-          </div>
-
-          <div>
-            <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Revenue Model</div>
-            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 leading-relaxed">{revenueModel || 'Direct/Subscription'}</p>
-          </div>
-
-          <div>
-            <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 opacity-60">Core Features</div>
-            <ul className="space-y-1.5 overflow-hidden">
-              {(bullets || []).map((b) => (
-                <li key={b} className="flex items-start gap-2.5">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-500" />
-                  <span className="leading-snug font-medium text-[11px] text-[var(--text-muted)]">{b}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave?.(e);
+            }}
+            className={cn(
+              "p-2.5 rounded-xl transition-all duration-300 shadow-sm",
+              isSaved 
+                ? "bg-emerald-50 text-emerald-500 border border-emerald-100" 
+                : "bg-slate-50 text-slate-300 hover:text-emerald-400 border border-slate-100"
+            )}
+            title={isSaved ? "Remove from saved" : "Save for later"}
+          >
+            <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+          </button>
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-[var(--border-color)] flex items-center justify-between gap-4">
-        <div className="text-sm">
-          <span className="text-[var(--text-muted)] font-black text-[10px] uppercase tracking-wider block mb-0.5 opacity-60">EST. BUDGET</span>
-          <span className="text-sm font-black text-[var(--text-main)]">
-            {mvpBudget || 'Flexible'}
+      <div className="mb-6">
+        <h3 className="text-xl font-black text-[var(--text-main)] mb-3 leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs font-bold text-[var(--text-muted)] leading-relaxed line-clamp-2">
+          {targetAudience}
+        </p>
+      </div>
+
+      <div className="space-y-3 mb-8 flex-grow">
+        {(Array.isArray(bullets) ? bullets : [bullets]).slice(0, 3).map((b, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <div className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+            <span className="text-[11px] font-bold text-[var(--text-main)] leading-tight">{b}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1 opacity-70">MVP BUDGET</span>
+          <span className="text-sm font-black text-blue-600">
+            {mvpBudget}
           </span>
         </div>
-        <BaseButton onClick={onAnalyze} className="min-w-28 font-black text-[10px] uppercase tracking-widest h-12 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20">
-          Analyze
+        <BaseButton 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAnalyze?.(e);
+          }} 
+          className="min-w-28 font-black text-[10px] uppercase tracking-widest h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20 text-white"
+        >
+          Analyze Idea
         </BaseButton>
       </div>
     </BaseCard>
   );
 }
-

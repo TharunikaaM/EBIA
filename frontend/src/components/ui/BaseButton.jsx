@@ -6,6 +6,7 @@ const styles = {
   secondary:
     'bg-[var(--bg-card)] text-[var(--text-main)] hover:bg-[var(--bg-subtle)] border border-[var(--border-color)] shadow-sm',
   ghost: 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]',
+  outline: 'bg-transparent border-2 border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-subtle)]',
 };
 
 const sizes = {

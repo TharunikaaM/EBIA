@@ -26,7 +26,7 @@ class IdeaResponse(BaseModel):
     extracted_features: FeatureExtraction
     feasibility_score: float
     feasibility_reasoning: str
-    market_potential: Optional[int] = 80
+    market_potential: Optional[int] = None
     audience_clarity: Optional[str] = "High"
     roadmap: Optional[List[str]] = []
     competitor_overview: List[CompetitorOverview]
@@ -55,6 +55,7 @@ class GeneratedIdea(BaseModel):
     revenue_model: Optional[str] = "Subscription"
     market_fit_focus: str
     time_to_build: str
+    budget: Optional[str] = "Depends on approach"
 
 class IdeaGenerateResponse(BaseModel):
     ideas: List[GeneratedIdea]

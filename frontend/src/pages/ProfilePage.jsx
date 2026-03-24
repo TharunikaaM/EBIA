@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Sun, MapPin, User as UserIcon, Mail, Bookmark, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, MapPin, User as UserIcon, Mail, Bookmark, Sparkles, Layout } from 'lucide-react';
+import { cn } from '../lib/cn';
 import BaseCard from '../components/ui/BaseCard';
 import BaseButton from '../components/ui/BaseButton';
 import BaseInput from '../components/ui/BaseInput';
+import Tooltip from '../components/ui/Tooltip';
 
 export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], onDeleteIdea, onAnalyzeIdea }) {
   const navigate = useNavigate();
-  const [location, setLocation] = useState('Singapore');
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 animate-in fade-in duration-500">
@@ -20,7 +21,7 @@ export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], on
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
             Back
           </button>
-          <h1 className="text-2xl font-black tracking-tight text-[var(--text-main)] uppercase tracking-[0.1em]">Founders Workspace</h1>
+          <h1 className="text-2xl font-black tracking-tight text-[var(--text-main)] uppercase tracking-[0.1em]">Your Workspace</h1>
         </div>
       </div>
 
@@ -56,7 +57,7 @@ export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], on
               <div className="p-1.5 rounded-lg bg-amber-500 text-white shadow-sm">
                 <Bookmark className="h-4 w-4" />
               </div>
-              <h2 className="text-sm font-black text-[var(--text-main)] uppercase tracking-[0.1em]">Bookmarked Concepts</h2>
+              <h2 className="text-sm font-black text-[var(--text-main)] uppercase tracking-[0.1em]">Saved Ideas</h2>
             </div>
             <span className="text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg uppercase tracking-widest">
               {savedIdeas.length} Saved
@@ -79,35 +80,41 @@ export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], on
               </BaseCard>
             ) : (
               savedIdeas.map((idea) => (
-                <BaseCard key={idea.id} className="p-4 flex flex-col justify-between group hover:border-[var(--color-primary)] transition-all shadow-sm bg-[var(--bg-card)] border border-[var(--border-color)]">
-                  <div>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 transition-transform group-hover:scale-105">
-                        <Sparkles className="h-5 w-5" />
-                      </div>
-                      <button
-                        onClick={() => onDeleteIdea?.(idea.id)}
-                        className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                        title="Remove bookmark"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <h3 className="text-base font-black text-[var(--text-main)] mb-2 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
+                <BaseCard key={idea.id} className="p-0 border border-[var(--border-color)] flex flex-col h-full shadow-sm hover:shadow-md transition-all group">
+                  <div 
+                    className="p-4 cursor-pointer flex-1"
+                    onClick={() => onAnalyzeIdea?.({ ...idea.content, title: idea.title })}
+                  >
+                    <h3 className="text-base font-black text-[var(--text-main)] mb-2 mt-2 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
                       {idea.title}
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] line-clamp-3 mb-4 font-bold leading-relaxed opacity-80">
-                      {idea.content?.description || "A strategic business model optimized for your chosen market profile."}
+                      {idea.content?.description || "A refined version of your idea with improvements."}
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-[var(--border-color)] flex items-center gap-3">
-                    <BaseButton
-                      onClick={() => onAnalyzeIdea?.(idea.content)}
-                      className="flex-1 h-10 rounded-lg text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-sm"
-                    >
-                      Run Full Analysis
-                    </BaseButton>
+                  <div className="px-4 pb-4 mt-auto">
+                    <div className="pt-4 border-t border-[var(--border-color)] flex items-center justify-between gap-3">
+                      <BaseButton
+                        onClick={() => onAnalyzeIdea?.({ ...idea.content, title: idea.title })}
+                        className="flex-1 w-full h-10 rounded-lg text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 text-white"
+                      >
+                        <Layout className="h-3.5 w-3.5" />
+                        See Full Details
+                      </BaseButton>
+
+                      <Tooltip text="Unsave this idea" position="top">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteIdea?.(idea.id);
+                          }}
+                          className="h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-lg border bg-[var(--bg-subtle)] border-[var(--border-color)] text-blue-600 dark:text-blue-400 transition-all hover:border-blue-500 hover:bg-[var(--bg-main)]"
+                        >
+                          <Bookmark className="h-4 w-4 fill-current" />
+                        </button>
+                      </Tooltip>
+                    </div>
                   </div>
                 </BaseCard>
               ))
@@ -118,10 +125,4 @@ export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], on
     </div>
   );
 }
-
-// Helper for Toggle (redundant if cn is correctly imported, but being safe)
-function cn(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
-
 

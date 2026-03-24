@@ -14,20 +14,23 @@ class IdeaRequest(BaseModel):
                 "idea": "An app that connects local farmers directly to high-end restaurants for daily fresh deliveries.",
                 "domain": "AgriTech",
                 "location": "Local",
-                "budget": "<$50k"
+                "budget": "<₹5 Lakhs"
             }
         }
 
 class IdeaGenerateRequest(BaseModel):
-    business_type: str = Field(..., description="Type of business (e.g., SaaS, E-commerce, Marketplace).")
-    location: str = Field(..., description="Target location or market (e.g., Urban US, Global, Rural India).")
-    budget: str = Field(..., description="Investment budget (e.g., Bootstrapped, $10k-$50k, VC Funding).")
+    business_type: str = Field(..., description="E.g., B2B SaaS, E-commerce, EdTech")
+    location: Optional[str] = Field(default="Global", description="Target market location (e.g., India, US, Global)")
+    budget: Optional[str] = Field(default="Flexible", description="Available capital (e.g., <₹5 Lakhs, Flexible)")
+    business_model: Optional[str] = Field(default=None, description="Preferred revenue model (e.g., Subscription, Marketplace)")
+    existing_ideas: Optional[list[str]] = Field(default=None, description="List of already generated ideas to avoid repeating")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "business_type": "Marketplace",
                 "location": "Urban Europe",
-                "budget": "$10k-$50k"
+                "budget": "₹1L-₹5L",
+                "business_model": "Subscription"
             }
         }

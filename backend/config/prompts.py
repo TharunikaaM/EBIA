@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 class PromptConfig:
     @staticmethod
@@ -37,12 +38,14 @@ class PromptConfig:
         2. Financial Modeling: Provide realistic budget estimates grounded in the regional reality of {location} for a {domain} business.
         3. Strategic Justification: Explicitly link each pivot to the "Evidence" provided.
         
-        Strict Privacy Constraints:
-        - Suggestions MUST only draw from Public market data.
-        - NEVER reference internal user details marked as Private in the suggestions.
+        IMPORTANT ON SIMPLICITY:
+        - Use extremely simple, clear, and non-technical language. 
+        - Avoid technical jargon (e.g., use "How it works" instead of "Technical Architecture").
+        - Speak like you are explaining it to a first-time business owner.
         
         Output Format: Strict JSON matching the PivotResponse schema.
-        Budget Details must include "mvp_budget" and "scaling_budget" as structured strings with currency.
+        Budget Details must include "mvp_budget" and "scaling_budget" as structured strings.
+        CRITICAL: Format ALL currency explicitly in Indian Rupees (₹) and Lakhs/Crores (e.g., "₹5 Lakhs", "₹2 Crores"). Do NOT use Dollars ($).
         
         Schema Template:
         {{
@@ -52,8 +55,8 @@ class PromptConfig:
                     "idea_description": "Descriptive title and summary",
                     "strategic_advantage": "Why this path succeeds based on the specific market gaps identified",
                     "budget_details": {{
-                        "mvp_budget": "[Local Currency] Amount (Reasoning for local costs)",
-                        "scaling_budget": "[Local Currency] Amount (Reasoning for local growth)",
+                        "mvp_budget": "₹Amount (Reasoning for local costs)",
+                        "scaling_budget": "₹Amount (Reasoning for local growth)",
                         "resource_allocation": ["Alloc 1", "Alloc 2", "Alloc 3"]
                     }}
                 }}
@@ -62,25 +65,28 @@ class PromptConfig:
         """
 
     @staticmethod
-    def get_idea_synthesis_prompt(request_business_type: str, request_location: str, request_budget: str) -> str:
+    def get_idea_synthesis_prompt(request_business_type: str, request_location: str, request_budget: str, request_business_model: Optional[str] = None, existing_ideas: Optional[list[str]] = None) -> str:
+        business_model_line = f"- Preferred Revenue Model: {request_business_model} (lean towards this model unless it fundamentally conflicts with the domain)." if request_business_model else ""
+        existing_ideas_line = f"\\nCRITICAL NO-REPEAT RULE:\\nThe user has already seen these ideas: {', '.join(existing_ideas)}.\\nYou MUST generate completely DIFFERENT, highly lateral ideas that do NOT overlap with the ones listed above. Refine your thinking to be extremely creative." if existing_ideas else ""
         return f"""
         Role: Master Startup Architect
-        Task: Suggest 3 distinct, high-potential startup directions STRICTLY within the {request_business_type} domain.
+        Task: Suggest 3 distinct, high-potential startup directions STRICTLY within the {{request_business_type}}.
+        {{existing_ideas_line}}
         
         Constraints:
-        - Domain/Industry: {request_business_type} (CRITICAL: Every idea MUST be directly relevant to this specific domain).
-        - Location: {request_location}
-        - Budget: {request_budget}
+        - Domain/Industry: {request_business_type} (CRITICAL: The core premise of every idea MUST be native to this specific industry).
+        - Location / Target Audience: {request_location}
+        - Budget / Core Problem to Solve: {request_budget}
+        {business_model_line}
         
         Requirements:
-        1. Strict Relevance: The ideas must solve real problems specifically within the {request_business_type} sector.
-        2. Domain Mention: Every idea's description MUST explicitly mention how it fits into the {request_business_type} industry.
-        3. No Generic Ideas: Avoid generic "e-commerce" or "delivery" apps unless they have a very specific, unique twist for {request_business_type}.
-        4. Innovation: Suggest concepts that are modern and trending (e.g., AI-integrated, sustainable, or platform-based).
+        1. Strict Relevance: The ideas must solve highly specific problems native to the {request_business_type} sector (e.g., if Finance, solve actual financial, accounting, or trading problems).
+        2. No Generic Ideas: Do absolutely NOT suggest generic project management, team communication, or performance monitoring software with the industry name slapped on. That is unacceptable.
+        3. Innovation: Suggest concepts that are modern and trending (e.g., AI-integrated, sustainable, or platform-based) but deeply rooted in the core industry.
         
         For each idea, provide:
-        - title: Short catchy name
-        - description: One sentence summary that EXPLICITLY mentions the {request_business_type} focus.
+        - title: Short catchy name (Avoid generic prefixes like "SaaS ")
+        - description: One sentence summary that explicitly demonstrates deep domain expertise.
         - domain: {request_business_type}
         - score: An integer (70-95) based on current local and global trends.
         - features: List of 3 core features.
@@ -88,6 +94,7 @@ class PromptConfig:
         - revenue_model: How will it make money simply?
         - market_fit_focus: e.g. "High Retention", "Low OpEx", "Scalable Tech".
         - time_to_build: e.g. "2-5 months".
+        - budget: Estimated MVP cost. (CRITICAL: Format exclusively in Indian Rupees (₹) and Lakhs/Crores. e.g. "₹5 Lakhs". Do NOT use Dollars).
         
         Return JSON structure:
         {{
@@ -101,7 +108,8 @@ class PromptConfig:
                     "target_audience": "...",
                     "revenue_model": "...",
                     "market_fit_focus": "...",
-                    "time_to_build": "..."
+                    "time_to_build": "...",
+                    "budget": "..."
                 }},
                 ...
             ]
@@ -109,10 +117,16 @@ class PromptConfig:
         """
 
     @staticmethod
-    def get_analysis_prompt(idea: str, evidence: str, domain: str = None, location: str = None, budget: str = None) -> str:
+    def get_analysis_prompt(idea: str, evidence: str, domain: Optional[str] = None, location: Optional[str] = None, budget: Optional[str] = None) -> str:
         metadata_str = f"Domain: {domain or 'General'}\nLocation: {location or 'Global'}\nBudget: {budget or 'Flexible'}"
         return f"""
         Role: Expert Startup Strategist (Helpful & Friendly).
+        
+        STRICT WRITING RULES:
+        - Use simple, direct, non-technical language (outcome-based).
+        - Avoid all jargon: No "Analyze", "Strategic", "Pivot", "Feasibility", "RAG".
+        - Use "Check", "Best/Smart", "Option", "Success chance".
+        
         Task: Analyze and validate this startup idea.
         
         SUPPORT MULTILINGUAL: 
@@ -128,7 +142,7 @@ class PromptConfig:
         
         Evaluation Guidelines:
         1. "refined_idea": A clear, helpful 2-sentence pitch.
-        2. "roadmap": Provide a 5-step high-intent execution roadmap (e.g., Step 1: Market Deep-Dive, Step 2: Technical Architecture, Step 3: Legal & Financial Structuring, Step 4: Alpha Launch, Step 5: Growth Sprints).
+        2. "roadmap": Provide a 5-step simple roadmap using non-technical language (e.g., Step 1: See if people actually want this by talking to them or checking online, Step 2: Make a simple version of your idea to show how it works, Step 3: Figure out all the costs and how you will make money, Step 4: Show your idea to the world and get your first users, Step 5: Get more customers and start growing your business).
         3. "risks": List at least 4 realistic, categorized challenges (e.g., "Operational: ...", "Financial: ...", "Technical: ...").
         4. "improvements": 3 specific, actionable suggestions.
         5. "market_potential": 0-100 score.

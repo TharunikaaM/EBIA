@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ChatController:
     @staticmethod
-    def handle_chat(db: Session, evaluation_id: int, user_email: str, request: ChatRequest) -> ChatResponse:
+    async def handle_chat(db: Session, evaluation_id: int, user_email: str, request: ChatRequest) -> ChatResponse:
         """
         Orchestrates the chat response generation.
         """
@@ -20,7 +20,7 @@ class ChatController:
             raise HTTPException(status_code=400, detail="Message is too short.")
             
         try:
-            response_text = ChatService.generate_follow_up(db, evaluation_id, user_email, request.message)
+            response_text = await ChatService.generate_follow_up(db, evaluation_id, user_email, request.message)
             return ChatResponse(response=response_text)
         except Exception as e:
             logger.error(f"Error handling chat request: {e}")

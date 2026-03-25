@@ -29,6 +29,11 @@ class VectorRepository:
         db = SessionLocal()
         try:
             db_docs = db.query(MarketEvidence).filter(MarketEvidence.is_public == True).all()
+            
+            if not db_docs:
+                logger.warning("No documents found in DB. Falling back to JSON seed data.")
+                raise Exception("Empty DB")
+                
             self.documents = [
                 {
                     "id": d.id,
@@ -40,12 +45,13 @@ class VectorRepository:
                 }
                 for d in db_docs
             ]
-            logger.info(f"Loaded {len(self.documents)} public market evidence documents.")
+            logger.info(f"Loaded {len(self.documents)} public market evidence documents from DB.")
         except Exception as e:
-            logger.error(f"Error loading documents from database: {e}", exc_info=True)
-            # Fallback to JSON file if DB is unavailable
+            logger.error(f"Failed to load from DB: {e}. Falling back to JSON: {settings.DATA_PATH}")
             if os.path.exists(settings.DATA_PATH):
                 self.documents = load_json(settings.DATA_PATH)
+            else:
+                logger.error(f"Fallback JSON file not found at {settings.DATA_PATH}!")
         finally:
             db.close()
 

@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import { AlertTriangle, X, ArrowRight } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { EvaluationProvider, useEvaluation } from './context/EvaluationContext';
 import PageShell from './components/layout/PageShell';
 import AppHeader from './components/layout/AppHeader';
 import LoginModal from './components/ui/LoginModal';
@@ -44,14 +45,22 @@ function AppInner() {
   const [budgetRange, setBudgetRange] = useState('');
   const [businessModel, setBusinessModel] = useState('');
 
-  const [evaluation, setEvaluation] = useState(null);
-  const [generatedIdeas, setGeneratedIdeas] = useState(null);
-  const [evaluationId, setEvaluationId] = useState(null);
-  const [loadingMsg, setLoadingMsg] = useState('Checking your idea...');
+  const { state: evalState, dispatch: evalDispatch } = useEvaluation();
+  const evaluation = evalState.evaluation;
+  const generatedIdeas = evalState.generatedIdeas;
+  const evaluationId = evalState.evaluationId;
+  const loadingMsg = evalState.loadingMsg;
+  const chatMessages = evalState.chatMessages;
+  const isChatTyping = evalState.isChatTyping;
+  const isLoading = evalState.isLoading;
 
-  const [chatMessages, setChatMessages] = useState([]);
-  const [isChatTyping, setIsChatTyping] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const setEvaluation = (v) => evalDispatch({ type: 'SET_EVALUATION', payload: v });
+  const setGeneratedIdeas = (v) => evalDispatch({ type: 'SET_GENERATED_IDEAS', payload: v });
+  const setEvaluationId = (v) => evalDispatch({ type: 'SET_EVALUATION_ID', payload: v });
+  const setLoadingMsg = (v) => evalDispatch({ type: 'SET_LOADING_MSG', payload: v });
+  const setChatMessages = (v) => evalDispatch({ type: 'SET_CHAT_MESSAGES', payload: v });
+  const setIsChatTyping = (v) => evalDispatch({ type: 'SET_IS_CHAT_TYPING', payload: v });
+  const setIsLoading = (v) => evalDispatch({ type: 'SET_IS_LOADING', payload: v });
 
   const [genStep, setGenStep] = useState(1);
   const [genType, setGenType] = useState('SaaS');
@@ -89,16 +98,21 @@ function AppInner() {
   }, []);
 
   const pollStatus = useCallback(async (taskId) => {
+    const startTime = Date.now();
     const iv = setInterval(async () => {
+      if (Date.now() - startTime > 90000) {
+        clearInterval(iv);
+        setIsLoading(false);
+        toast.error('Evaluation timed out. Please try again later.');
+        return;
+      }
       try {
         const res = await api.get(`/api/v1/idea/status/${taskId}`);
         if (res.data.status === 'COMPLETED') {
           clearInterval(iv);
           setEvaluation(res.data.results);
           setEvaluationId(res.data.id);
-          setIsLoading(false);
-          setIsEvaluationVisible(true);
-          navigate('/evaluation');
+          setLoadingMsg('COMPLETED'); // Signals LoadingPage to finish up
         } else if (res.data.status === 'FAILED') {
           clearInterval(iv);
           setIsLoading(false);
@@ -128,12 +142,27 @@ function AppInner() {
     setPreviewModal({ isOpen: false, concept: null });
     setSelectedConcept(concept);
     const parts = [];
-    if (concept.title) parts.push(`Idea: ${concept.title}`);
-    if (concept.description || concept.idea_description) parts.push(`Description: ${concept.description || concept.idea_description}`);
+    
+    // Title
+    const title = concept.title || concept.idea_description || "";
+    if (title) parts.push(`Idea: ${title}`);
+    
+    // Description / Strategic Advantage
+    const desc = concept.description || concept.strategic_advantage || "";
+    if (desc) parts.push(`Description: ${desc}`);
+    
+    // Market
     if (concept.target_audience) parts.push(`Target Market: ${concept.target_audience}`);
+    
+    // Revenue
     if (concept.revenue_model) parts.push(`Revenue Model: ${concept.revenue_model}`);
-    if (concept.features && concept.features.length) parts.push(`Key Features: ${concept.features.join(', ')}`);
-    const fullText = parts.length > 0 ? parts.join('\n') : (concept.idea_description || concept.title || "");
+    
+    // Features
+    const rawFeatures = concept.features || concept.bullets || [];
+    const featureList = Array.isArray(rawFeatures) ? rawFeatures : [rawFeatures];
+    if (featureList.length) parts.push(`Key Features: ${featureList.join(', ')}`);
+    
+    const fullText = parts.length > 0 ? parts.join('\n') : (title || "");
     setIdeaInput(fullText);
     setLandingMode('analyze');
     navigate('/analyze');
@@ -142,7 +171,7 @@ function AppInner() {
   const _doEvaluate = useCallback(async () => {
     if (!ideaInput || ideaInput.length < 100) return toast.error('Please describe your idea in more detail (at least 100 characters).');
     setIsLoading(true);
-    setLoadingMsg('Checking safety and guidelines...');
+    setLoadingMsg('Initializing evaluation criteria...');
     setGeneratedIdeas(null);
     setIsEvaluationVisible(false);
     setChatMessages([]);
@@ -169,13 +198,13 @@ function AppInner() {
 
   const _doGenerate = useCallback(async () => {
     setIsLoading(true);
-    setLoadingMsg('Understanding your request...');
+    setLoadingMsg('Defining architectural constraints...');
     
     const genProgressTimer = setInterval(() => {
       setLoadingMsg(prev => {
-        if (prev.includes("Understanding")) return "Scanning industry opportunities...";
-        if (prev.includes("Scanning")) return "Generating concept ideas...";
-        if (prev.includes("Generating")) return "Finalizing your suggestions...";
+        if (prev.includes("Constraints")) return "Scanning for market gaps...";
+        if (prev.includes("Scanning")) return "Generating preliminary concepts...";
+        if (prev.includes("Generating")) return "Refining strategic positioning...";
         return prev;
       });
     }, 4000);
@@ -365,7 +394,17 @@ function AppInner() {
       <Routes>
         <Route path="/" element={<Navigate to="/analyze" replace />} />
         <Route path="/analyze" element={
-          isLoading ? <LoadingPage message={loadingMsg} mode={landingMode} /> : (
+          isLoading ? (
+            <LoadingPage 
+              message={loadingMsg} 
+              mode={landingMode} 
+              onComplete={() => {
+                setIsLoading(false);
+                setIsEvaluationVisible(true);
+                navigate(landingMode === 'generate' ? '/generate/results' : '/evaluation');
+              }}
+            />
+          ) : (
             <LandingPage
               ideaInput={ideaInput} setIdeaInput={setIdeaInput}
               mode={landingMode} setMode={setLandingMode}
@@ -479,7 +518,9 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppInner />
+      <EvaluationProvider>
+        <AppInner />
+      </EvaluationProvider>
     </AuthProvider>
   );
 }

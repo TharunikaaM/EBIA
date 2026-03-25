@@ -1,9 +1,9 @@
-﻿[
+[
     {
         "id": "1",
         "domain": "AgriTech",
         "content": "A platform connecting local farmers directly to high-end restaurants for daily fresh deliveries.",
-        "metadata": {
+        "doc_metadata": {
             "market_trend": "Growing demand for farm-to-table traceability.",
             "risk": "Logistics and maintaining freshness during transit."
         }
@@ -12,7 +12,7 @@
         "id": "2",
         "domain": "EdTech",
         "content": "AI-powered personalized tutoring for high school students focusing on STEM subjects.",
-        "metadata": {
+        "doc_metadata": {
             "market_trend": "Increasing reliance on AI for personalized learning paths.",
             "risk": "High customer acquisition cost and competition."
         }
@@ -21,7 +21,7 @@
         "id": "3",
         "domain": "FinTech",
         "content": "Micro-investing app that rounds up daily purchases and invests the spare change in ESG funds.",
-        "metadata": {
+        "doc_metadata": {
             "market_trend": "Retail investors showing strong interest in sustainable investing.",
             "risk": "Regulatory compliance and market volatility."
         }

@@ -46,7 +46,7 @@ export default function ProfilePage({ user, theme, setTheme, savedIdeas = [], on
             className="p-3 rounded-xl bg-[var(--bg-subtle)] hover:bg-[var(--bg-main)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-transparent hover:border-[var(--border-color)]"
             title="Toggle Theme"
           >
-            {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
         </div>
 

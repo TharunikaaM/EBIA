@@ -3,6 +3,7 @@ Deterministic scoring engine for Startup Idea Intelligence.
 Calculates feasibility based on market evidence, innovation, and execution risk.
 """
 from typing import List, Dict, Any
+import math
 
 def calculate_idea_feasibility_score(idea_text: str, similar_documents: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -25,8 +26,10 @@ def calculate_idea_feasibility_score(idea_text: str, similar_documents: List[Dic
     market_val_score = max(0, min(100, (1.0 - avg_distance) * 100))
     
     # 2. Innovation / Novelty
-    # Higher distance = Higher Novelty.
-    novelty_score = max(0, min(100, avg_distance * 100))
+    # Higher distance = Higher Novelty. Normalized using a Sigmoid function.
+    k_steepness = 10
+    threshold = 0.5
+    novelty_score = (1 / (1 + math.exp(-k_steepness * (avg_distance - threshold)))) * 100
     
     # 3. Execution Risk (Retrieval-Based Sentiment/Pain Point Analysis)
     risk_keywords = ["failure", "closed", "regulation", "struggle", "unmet", "lack", "pain", "frustration", "bankrupt"]

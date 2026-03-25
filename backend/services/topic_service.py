@@ -18,20 +18,20 @@ DEFAULT_TOPICS = {
     "features": ["AI-driven insights", "Seamless mobile integration"]
 }
 
-def synthesize_topic_cluster_summary(docs: List[str], cluster_keywords: List[str]) -> str:
+async def synthesize_topic_cluster_summary(docs: List[str], cluster_keywords: List[str]) -> str:
     """
     Synthesizes a human-readable market reality from a cluster of documents using LLM.
     """
     context_blob = "\n---\n".join(docs[:5])
     analysis_prompt = PromptConfig.get_topic_cluster_synthesis_prompt(cluster_keywords, context_blob)
     try:
-        summary_text = LLMService.generate(analysis_prompt)
+        summary_text = await LLMService.generate(analysis_prompt)
         return summary_text.strip()
     except Exception as e:
         logger.error(f"Cluster synthesis failure: {e}")
         return cluster_keywords[0].capitalize() if cluster_keywords else "Unknown Trend"
 
-def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Orchestrates the extraction of market patterns (Pain Points, Trends, Features) 
     using BERTopic enhanced by c-TF-IDF and LLM-driven synthesis.
@@ -54,7 +54,7 @@ def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[D
     # Heuristic: Direct LLM extraction for small datasets
     if len(modeling_corpus) < 3:
         logger.info("Insufficient corpus size for BERTopic. Delegating to direct LLM pattern mining.")
-        return execute_llm_pattern_mining_fallback(seed_text)
+        return await execute_llm_pattern_mining_fallback(seed_text)
 
     try:
         # Enforce Class-based TF-IDF for high-impact keyword differentiation
@@ -75,7 +75,7 @@ def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[D
             cluster_docs = [modeling_corpus[i] for i, t in enumerate(topic_assignments) if t == topic_idx]
             cluster_keywords = [word for word, _ in bertopic_engine.get_topic(topic_idx)][:5]
             
-            market_summary = synthesize_topic_cluster_summary(cluster_docs, cluster_keywords)
+            market_summary = await synthesize_topic_cluster_summary(cluster_docs, cluster_keywords)
             category_tag = classify_market_insight_category(market_summary)
             
             if category_tag in extracted_insights:
@@ -83,7 +83,7 @@ def mine_market_patterns_and_topics(seed_text: str, contextual_documents: List[D
 
     except Exception as e:
         logger.error(f"BERTopic pattern mining pipeline failed: {e}")
-        return execute_llm_pattern_mining_fallback(seed_text)
+        return await execute_llm_pattern_mining_fallback(seed_text)
 
     # Apply default indicators if zero results found
     for key in extracted_insights:
@@ -108,13 +108,13 @@ def classify_market_insight_category(insight_text: str) -> str:
         
     return "key_features"
 
-def execute_llm_pattern_mining_fallback(idea_text: str) -> Dict[str, Any]:
+async def execute_llm_pattern_mining_fallback(idea_text: str) -> Dict[str, Any]:
     """
     Direct LLM-based pattern extraction for limited target data.
     """
     mining_prompt = PromptConfig.get_llm_pattern_mining_prompt(idea_text)
     try:
-        raw_json_response = LLMService.generate(mining_prompt, json_format=True)
+        raw_json_response = await LLMService.generate(mining_prompt, json_format=True)
         data = json.loads(raw_json_response.replace('```json', '').replace('```', '').strip())
         return {
             "user_pain_points": data.get("user_pain_points", DEFAULT_TOPICS["pain_points"]),

@@ -199,8 +199,10 @@ class PromptConfig:
         """
 
     @staticmethod
-    def get_chat_followup_prompt(original_idea: str, refined_idea: str, risk_factors: list, user_message: str, fresh_context: str) -> str:
-        risks_str = ', '.join(risk_factors)
+    def get_chat_followup_prompt(original_idea: str, refined_idea: str, risk_factors: list, market_trends: list, pain_points: list, user_message: str, fresh_context: str) -> str:
+        risks_str = ', '.join(risk_factors) if risk_factors else "None specifically flagged"
+        trends_str = ', '.join(market_trends) if market_trends else "No specific trends identified"
+        pain_points_str = ', '.join(pain_points) if pain_points else "No specific pain points identified"
         context_str = fresh_context if fresh_context else "No specific new details found, but I can still help based on what I know."
         return f"""
         You are a helpful and friendly Startup Assistant. Your goal is to help the user improve their business idea using simple, everyday language.
@@ -209,6 +211,8 @@ class PromptConfig:
         - Original Idea: {original_idea}
         - Refined Concept: {refined_idea}
         - Potential Risks: {risks_str}
+        - Market Trends: {trends_str}
+        - Target Audience Pain Points: {pain_points_str}
         
         New Information found after searching the network for '{user_message}':
         {context_str}

@@ -31,7 +31,7 @@ class MarketEvidence(Base):
     content = Column(Text)
     category = Column(String, index=True)
     doc_metadata = Column(JSON, nullable=True)  # market_trend, risk, location
-    is_public = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -13,7 +13,7 @@ from config.prompts import PromptConfig
 
 logger = logging.getLogger(__name__)
 
-def audit_content_for_ethical_integrity(
+async def audit_content_for_ethical_integrity(
     content_text: str, 
     is_generated_advice: bool = False, 
     db: Session = None, 
@@ -37,7 +37,7 @@ def audit_content_for_ethical_integrity(
     }
 
     try:
-        raw_llm_response = LLMService.generate(analysis_prompt, json_format=True)
+        raw_llm_response = await LLMService.generate(analysis_prompt, json_format=True)
         llm_data = json.loads(raw_llm_response.replace('```json', '').replace('```', '').strip())
         safety_report.update(llm_data)
         

@@ -34,7 +34,7 @@ class IdeaService:
     def __init__(self):
         self.retrieval_service = RetrievalService()
 
-    def execute_startup_evaluation_pipeline(
+    async def execute_startup_evaluation_pipeline(
         self, 
         request: IdeaRequest, 
         db: Session = None, 
@@ -61,12 +61,16 @@ class IdeaService:
                 except Exception as e:
                     logger.error(f"Failed to update task status: {e}")
 
+        final_status = None
+        final_results = None
+        final_error = None
+
         try:
             raw_idea_text = request.idea
             cleaned_idea_text = clean_text(raw_idea_text)
             
             # Phase 1: Ethical safety check
-            update_task_status("Reading your idea carefully")
+            update_task_status("Performing Ethical Safety Check")
             
             user_email = None
             if task_id:
@@ -74,13 +78,14 @@ class IdeaService:
                 if entry:
                     user_email = entry.user_email
                     
-            safety_audit = audit_content_for_ethical_integrity(raw_idea_text, db=internal_db, user_email=user_email)
+            safety_audit = await audit_content_for_ethical_integrity(raw_idea_text, db=internal_db, user_email=user_email)
             if safety_audit["is_refusal"]:
-                update_task_status("FAILED", error_msg=safety_audit["educational_reason"])
+                final_status = "FAILED"
+                final_error = safety_audit["educational_reason"]
                 return self._generate_refusal_response(raw_idea_text, safety_audit)
 
             # Phase 2: Context-aware evidence retrieval
-            update_task_status("Searching market data and trends")
+            update_task_status("Retrieving Market Evidence")
             market_evidence = self.retrieval_service.retrieve_market_evidence(
                 cleaned_idea_text, 
                 domain=request.domain, 
@@ -90,11 +95,11 @@ class IdeaService:
             structured_evidence, evidence_context = self._process_market_evidence(market_evidence)
 
             # Phase 3: Pattern & Topic Mining
-            update_task_status("Spotting patterns and competitors")
-            market_patterns = mine_market_patterns_and_topics(raw_idea_text, contextual_documents=market_evidence)
+            update_task_status("Analyzing Market Patterns")
+            market_patterns = await mine_market_patterns_and_topics(raw_idea_text, contextual_documents=market_evidence)
             
             # Phase 4: Strategic LLM Synthesis
-            update_task_status("Building your evaluation report")
+            update_task_status("Synthesizing Strategic Insights")
             analysis_prompt = self._build_analysis_prompt(
                 raw_idea_text, 
                 evidence_context,
@@ -103,7 +108,7 @@ class IdeaService:
                 budget=request.budget
             )
             
-            llm_raw_response = LLMService.generate(analysis_prompt, json_format=True)
+            llm_raw_response = await LLMService.generate(analysis_prompt, json_format=True)
             llm_data = IdeaService._extract_json(llm_raw_response)
             
             # Phase 5: Deterministic Scoring & Hybrid Logic
@@ -122,15 +127,22 @@ class IdeaService:
             )
 
             # Post-Generation Integrity Check
-            response = self._perform_output_audit(response, internal_db, user_email)
+            response = await self._perform_output_audit(response, internal_db, user_email)
 
-            update_task_status("COMPLETED", results=response.dict())
+            final_status = "COMPLETED"
+            final_results = response.dict()
             return response
 
         except Exception as e:
             logger.error(f"Critical Failure in Evaluation Pipeline: {e}")
-            update_task_status("FAILED", error_msg=str(e))
+            final_status = "FAILED"
+            final_error = str(e)
+            raise e
         finally:
+            if final_status:
+                logger.info(f"Finalizing task {task_id} with status {final_status}")
+                update_task_status(final_status, results=final_results, error_msg=final_error)
+                
             if db is None: # We created our own session, so we close it
                 internal_db.close()
 
@@ -157,7 +169,7 @@ class IdeaService:
         
         raise ValueError(f"Could not extract valid JSON from LLM response. Raw output: {llm_response[:300]}")
 
-    def propose_new_concept(self, request: IdeaGenerateRequest) -> IdeaGenerateResponse:
+    async def propose_new_concept(self, request: IdeaGenerateRequest) -> IdeaGenerateResponse:
         """
         Synthesizes 3 distinct startup concepts based on market parameters.
         """
@@ -170,7 +182,7 @@ class IdeaService:
         )
         
         try:
-            llm_response = LLMService.generate(prompt, json_format=True)
+            llm_response = await LLMService.generate(prompt, json_format=True)
             logger.info(f"RAW GROQ OUTPUT: {llm_response}")
             data = IdeaService._extract_json(llm_response)
             
@@ -231,7 +243,12 @@ class IdeaService:
 
     def _calculate_hybrid_score(self, llm_data: Dict, scoring_result: Dict) -> int:
         """Calculates a weighted average score between LLM insights and deterministic data."""
-        llm_potential = int(llm_data.get("market_potential", 80))
+        try:
+            raw_potential = str(llm_data.get("market_potential", 80)).replace('%', '').strip()
+            llm_potential = int(float(raw_potential))
+        except (ValueError, TypeError):
+            llm_potential = 80
+            
         deterministic_score = scoring_result["score"]
         return int((llm_potential * 0.6) + (deterministic_score * 0.4))
 
@@ -258,10 +275,10 @@ class IdeaService:
             status="success" if not safety_audit.get("flags") else "warning"
         )
 
-    def _perform_output_audit(self, response: IdeaResponse, db: Session, user_email: str) -> IdeaResponse:
+    async def _perform_output_audit(self, response: IdeaResponse, db: Session, user_email: str) -> IdeaResponse:
         """Audits the final advisory content for ethical compliance before returning."""
         advice_blob = f"{response.refined_idea} {' '.join(response.improvement_steps)}"
-        output_safety = audit_content_for_ethical_integrity(advice_blob, is_generated_advice=True, db=db, user_email=user_email)
+        output_safety = await audit_content_for_ethical_integrity(advice_blob, is_generated_advice=True, db=db, user_email=user_email)
         if not output_safety["is_safe"]:
             response.ethical_flags = list(set(response.ethical_flags + output_safety["flags"]))
             if output_safety.get("correction_path"):

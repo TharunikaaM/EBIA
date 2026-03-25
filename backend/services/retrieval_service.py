@@ -11,16 +11,31 @@ logger = logging.getLogger(__name__)
 class RetrievalService:
     """
     Orchestrates the retrieval of public market evidence using FAISS and Sentence-Transformers.
+    Implements a Singleton pattern to avoid reloading embeddings multiple times.
     """
-    def __init__(self):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            logger.info("Initializing RetrievalService Singleton...")
+            cls._instance = super(RetrievalService, cls).__new__(cls)
+            cls._instance._initialize()
+        return cls._instance
+
+    def _initialize(self):
+        start_t = time.time()
         self.embedding_model = EmbeddingModel().model
         self.repository = VectorRepository()
         
         # Populate index if it's empty but we have documents
-        if self.repository.index.ntotal == 0 and self.repository.documents:
+        if self.repository.index is not None and self.repository.index.ntotal == 0 and self.repository.documents:
+            logger.info("FAISS Index empty but documents exist. Pre-warming vectors...")
             texts = [doc["content"] for doc in self.repository.documents]
             vectors = self.embedding_model.encode(texts)
             self.repository.index.add(vectors)
+            logger.info(f"Successfully encoded and added {len(texts)} vectors.")
+            
+        logger.info(f"RetrievalService initialized in {time.time() - start_t:.2f}s")
 
     def retrieve_market_evidence(self, query_text: str, domain: str = None, location: str = None, top_k: int = 3) -> List[Dict[str, Any]]:
         """

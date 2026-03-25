@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ChatService:
     @staticmethod
-    def generate_follow_up(db: Session, evaluation_id: int, user_email: str, user_message: str) -> str:
+    async def generate_follow_up(db: Session, evaluation_id: int, user_email: str, user_message: str) -> str:
         """
         Generates a follow-up response based on previous evaluation results.
         """
@@ -50,13 +50,15 @@ class ChatService:
             original_idea=original_idea,
             refined_idea=refined_idea,
             risk_factors=risk_factors,
+            market_trends=market_trends,
+            pain_points=pain_points,
             user_message=user_message,
             fresh_context=fresh_context
         )
 
         try:
             # 3. Generate response using LLMService
-            response = LLMService.generate(system_prompt, json_format=False)
+            response = await LLMService.generate(system_prompt, json_format=False)
             return response
         except Exception as e:
             logger.error(f"Error in ChatService follow-up: {e}")

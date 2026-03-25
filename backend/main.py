@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from routes import idea_routes, auth_routes, history_routes, chat_routes, saved_ideas_routes
+from services.retrieval_service import RetrievalService
 from config import settings
 
 # 1. Configure Structured Logging
@@ -56,6 +57,16 @@ app.include_router(idea_routes.router, prefix="/api/v1")
 app.include_router(history_routes.router, prefix="/api/v1")
 app.include_router(chat_routes.router, prefix="/api/v1")
 app.include_router(saved_ideas_routes.router, prefix="/api/v1")
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Pre-warm the FAISS Vector Store instantly on backend startup.
+    This prevents the first user request from taking 5+ seconds to load the embeddings.
+    """
+    logger.info("Application startup: Pre-warming RetrievalService...")
+    RetrievalService()
+    logger.info("Application startup: Pre-warming complete.")
 
 @app.get("/", tags=["Health"], response_model=dict)
 async def read_system_root():

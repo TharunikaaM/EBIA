@@ -76,7 +76,7 @@ def ingest_data():
             title = entry.get("title") or entry.get("domain") or "Untitled"
             content = entry.get("content", "")
             category = entry.get("category") or entry.get("domain") or "General"
-            doc_metadata = entry.get("metadata") or {}
+            doc_metadata = entry.get("doc_metadata") or {}
 
             if not content:
                 logger.warning(f"Skipping entry with empty content: {title}")

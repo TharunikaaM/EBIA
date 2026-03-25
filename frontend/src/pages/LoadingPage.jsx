@@ -1,13 +1,14 @@
+import { useState, useEffect } from 'react';
 import { BrainCircuit, CheckCircle2, Circle, Loader2, ShieldCheck, Database, BarChart3, Sparkles, Lightbulb } from 'lucide-react';
 import BaseCard from '../components/ui/BaseCard';
 import { cn } from '../lib/cn';
 
 // These labels MUST exactly match the status strings set by update_task_status() in idea_service.py
 const ANALYZE_STEPS = [
-  { label: 'Reading your idea carefully', icon: ShieldCheck },
-  { label: 'Searching market data and trends', icon: Database },
-  { label: 'Spotting patterns and competitors', icon: BarChart3 },
-  { label: 'Building your evaluation report', icon: Sparkles },
+  { label: 'Performing Ethical Safety Check', icon: ShieldCheck },
+  { label: 'Retrieving Market Evidence', icon: Database },
+  { label: 'Analyzing Market Patterns', icon: BarChart3 },
+  { label: 'Synthesizing Strategic Insights', icon: Sparkles },
 ];
 
 const GENERATE_STEPS = [
@@ -31,9 +32,42 @@ function getActiveIndex(message, steps) {
   return partialIdx >= 0 ? partialIdx : 0;
 }
 
-export default function LoadingPage({ message = 'Scanning market signals…', mode = 'analyze' }) {
+export default function LoadingPage({ message = 'Scanning market signals…', mode = 'analyze', onComplete }) {
   const steps = mode === 'generate' ? GENERATE_STEPS : ANALYZE_STEPS;
-  const activeIdx = getActiveIndex(message, steps);
+  const targetIdx = getActiveIndex(message, steps);
+  const [uiIdx, setUiIdx] = useState(0);
+  const [isFinished, setIsFinished] = useState(false);
+
+  useEffect(() => {
+    // If backend reports completion (message is empty or results ready), jump to end
+    if (message === 'COMPLETED') {
+      const itv = setInterval(() => {
+        setUiIdx(prev => {
+          if (prev < steps.length - 1) return prev + 1;
+          clearInterval(itv);
+          setIsFinished(true);
+          return prev;
+        });
+      }, 800);
+      return () => clearInterval(itv);
+    }
+
+    // Otherwise, move uiIdx towards targetIdx sequentially
+    if (uiIdx < targetIdx) {
+      const timer = setTimeout(() => {
+        setUiIdx(prev => prev + 1);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [targetIdx, uiIdx, steps.length, message]);
+
+  useEffect(() => {
+    if (isFinished && onComplete) {
+      onComplete();
+    }
+  }, [isFinished, onComplete]);
+
+  const activeIdx = uiIdx;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">

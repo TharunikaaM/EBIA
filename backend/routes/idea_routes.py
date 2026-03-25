@@ -43,11 +43,11 @@ def check_appraisal_status(
     summary="Synthesize Novel Concept",
     description="Generates a new business idea based on specified parameters and executes the full evaluation pipeline."
 )
-def synthesize_new_concept(
+async def synthesize_new_concept(
     request: IdeaGenerateRequest, 
     current_user: dict = Depends(get_current_user)
 ):
-    return controller.service.propose_new_concept(request)
+    return await controller.service.propose_new_concept(request)
 
 @router.post(
     "/pivot", 
@@ -55,12 +55,12 @@ def synthesize_new_concept(
     summary="Discover Strategic Pivots",
     description="Generates 3 evidence-based pivot suggestions and budgets grounding them in public market data."
 )
-def discover_strategic_pivots(
+async def discover_strategic_pivots(
     request: PivotRequest,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    return controller.handle_pivots(
+    return await controller.handle_pivots(
         evaluation_id=request.evaluation_id, 
         db=db, 
         user_email=current_user["email"],

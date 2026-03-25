@@ -13,15 +13,15 @@ controller = ChatController()
     "/{evaluation_id}", 
     response_model=ChatResponse,
     summary="Startup Improvement Discussion",
-    description="Engage with the Lotus-Logic advisor for evidence-based refinements of your startup idea."
+    description="Engage with the EBIA advisor for evidence-based refinements of your startup idea."
 )
-def startup_improvement_discussion(
+async def startup_improvement_discussion(
     evaluation_id: int,
     request: ChatRequest, 
     db: Session = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    return controller.handle_chat(
+    return await controller.handle_chat(
         db=db, 
         evaluation_id=evaluation_id, 
         user_email=current_user["email"], 

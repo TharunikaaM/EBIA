@@ -63,7 +63,7 @@ class IdeaController:
             "results": entry.analysis_results
         }
 
-    def handle_pivots(
+    async def handle_pivots(
         self, 
         evaluation_id: int, 
         db: Session, 
@@ -82,7 +82,7 @@ class IdeaController:
         if not entry or not entry.analysis_results:
             raise HTTPException(status_code=404, detail="Primary evaluation results not found or processing incomplete.")
             
-        return PivotService.generate_pivots(
+        return await PivotService.generate_pivots(
             original_idea=entry.idea_text,
             domain=business_type_override or entry.analysis_results.get("extracted_features", {}).get("domain", "General"),
             analysis_results=entry.analysis_results,

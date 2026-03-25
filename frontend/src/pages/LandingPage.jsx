@@ -122,7 +122,7 @@ export default function LandingPage({
                           {len > 0 ? label : 'Explain your idea…'}
                         </span>
                         <span className={cn("text-[10px] font-bold tabular-nums", textColor)}>
-                          {len} / 200
+                          {len} / 300
                         </span>
                       </div>
                       <p className="text-[10px] text-[var(--text-muted)] font-medium opacity-70">

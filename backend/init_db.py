@@ -71,7 +71,7 @@ def init_db():
                         title=item.get("title") or item.get("domain") or "Untitled",
                         content=item.get("content", ""),
                         category=item.get("category") or item.get("domain") or "General",
-                        doc_metadata=item.get("metadata")
+                        doc_metadata=item.get("doc_metadata")
                     )
                     db.add(doc)
 

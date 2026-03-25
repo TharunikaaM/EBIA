@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class PivotService:
     @staticmethod
-    def generate_pivots(
+    async def generate_pivots(
         original_idea: str, 
         domain: str, 
         analysis_results: Dict[str, Any],
@@ -31,7 +31,7 @@ class PivotService:
         )
         
         try:
-            raw_response = LLMService.generate(prompt, json_format=True)
+            raw_response = await LLMService.generate(prompt, json_format=True)
             cleaned_json = raw_response.replace('```json', '').replace('```', '').strip()
             result_data = json.loads(cleaned_json)
             

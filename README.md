@@ -75,15 +75,16 @@ User Input → Embedding → FAISS Retrieval → LLM → Structured Output
 
 ### 🔹 Dashboard View
 
-![Dashboard](./screenshots/dashboard.png)
+<img width="1919" height="867" alt="Screenshot 2026-04-05 212034" src="https://github.com/user-attachments/assets/9c0b2c80-9999-4ce9-ad2d-ce64eda2a4f3" />
 
 ### 🔹 Feasibility Analysis
 
-![Analysis](./screenshots/analysis.png)
+<img width="1918" height="869" alt="Screenshot 2026-04-05 211810" src="https://github.com/user-attachments/assets/33d54b29-f12d-4960-9d08-8433d2d657f2" />
 
 ### 🔹 Generated Report
 
-![Report](./screenshots/report.png)
+<img width="782" height="629" alt="Screenshot 2026-04-05 211905" src="https://github.com/user-attachments/assets/1a9fa48d-7136-41d2-9ab3-a00741abbaea" />
+
 
 ---
 
